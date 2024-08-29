@@ -12,6 +12,7 @@ export default function Layout({ children }) {
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/favicon.png" type="image/png" />
         <title>Finance Tracker</title>
       </head>
       <body>

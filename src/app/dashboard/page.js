@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getUserBalance, addTransaction } from '../firebase';
+import { getUserBalance, addTransaction, updateTransaction, deleteTransaction,updateUserCurrency,getUserCurrency } from '../firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, onSnapshot, orderBy, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [amount, setAmount] = useState('');
   const [transactionType, setTransactionType] = useState('incoming');
   const [category, setCategory] = useState('');
+  const [description, setDescription] = useState(''); // New field for description
   const [userId, setUserId] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -21,6 +22,8 @@ export default function Dashboard() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState(null);
   const [editedCategoryName, setEditedCategoryName] = useState('');
+  const [editTransactionId, setEditTransactionId] = useState(null);
+  const [currency, setCurrency] = useState('USD'); // Default to USD
 
   const auth = getAuth();
   const router = useRouter();
@@ -31,6 +34,9 @@ export default function Dashboard() {
         setUserId(user.uid);
         const userBalance = await getUserBalance(user.uid);
         setBalance(userBalance);
+
+        const userCurrency = await getUserCurrency(user.uid); // Get default currency
+        setCurrency(userCurrency);
 
         // Listen for real-time updates to the user's transactions
         const transactionsQuery = query(
@@ -70,36 +76,74 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [auth, router]);
 
-  const handleAddTransaction = async () => {
-    const value = parseFloat(amount);
-    if (isNaN(value) || !userId || !category) return;
-
-    try {
-      const updatedBalance = await addTransaction(userId, value, transactionType, category);
-      setBalance(updatedBalance);
-      // Reset form and close modal
-      setAmount('');
-      setTransactionType('incoming');
-      setCategory('');
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error('Failed to add transaction:', error);
+  const handleCurrencyChange = async (newCurrency) => {
+    setCurrency(newCurrency);
+    if (userId) {
+      await updateUserCurrency(userId, newCurrency); // Save the selected currency
     }
   };
 
-  const handleAddCategory = async () => {
-    if (!category || !userId) return;
+  const handleAddTransaction = async () => {
+    const value = parseFloat(amount);
+    if (isNaN(value) || !userId || !category) return;
+  
+    try {
+      if (editTransactionId) {
+        await updateTransaction(userId, editTransactionId, value, transactionType, category, description); // Sertakan description
+        setEditTransactionId(null); // Reset after updating
+      } else {
+        const updatedBalance = await addTransaction(userId, value, transactionType, category, description); // Sertakan description
+        setBalance(updatedBalance);
+      }
+      closeModal();
+    } catch (error) {
+      console.error('Failed to add or update transaction:', error);
+    }
+  };
+  
 
+  const handleEditTransaction = (transaction) => {
+    setAmount(transaction.amount);
+    setTransactionType(transaction.type);
+    setCategory(transaction.category);
+    setDescription(transaction.description); // Load description when editing
+    setIsModalOpen(true);
+    setEditTransactionId(transaction.id); // Store the transaction ID to know which one to update
+  };
+
+  const handleDeleteTransaction = async (transaction) => {
+    try {
+      const updatedBalance = await deleteTransaction(userId, transaction.id, transaction.amount, transaction.type);
+      setBalance(updatedBalance);
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setAmount('');
+    setCategory('');
+    setDescription(''); // Reset description
+    setTransactionType('incoming');
+    setEditTransactionId(null);
+  };
+
+  const handleAddCategory = async () => {
+    if (!editedCategoryName || !userId) return; // Pastikan kategori dan userId diisi
+  
     try {
       await addDoc(collection(db, 'users', userId, 'categories'), {
-        name: category,
+        name: editedCategoryName,
         type: transactionType,
       });
-      setCategory('');
+      setEditedCategoryName(''); // Clear input setelah menambahkan kategori
+      setIsCategoryModalOpen(false); // Tutup modal setelah penambahan kategori
     } catch (error) {
       console.error('Failed to add category:', error);
     }
   };
+  
 
   const handleDeleteCategory = async (categoryId) => {
     try {
@@ -146,14 +190,17 @@ export default function Dashboard() {
           <Bars3Icon className="h-6 w-6" />
         </button>
         <h2 className="text-3xl font-bold text-gray-800 mb-4">Dashboard</h2>
-        <p className="text-lg text-gray-600">Current Balance:</p>
-        <p className="text-5xl font-bold text-green-500 mb-6">{balance.toLocaleString()} USD</p>
+        <p className="text-lg text-gray-600">Current Balance ({currency}):</p>
+        <p className="text-5xl font-bold text-green-500 mb-6">
+          {balance.toLocaleString(undefined, { style: 'currency', currency })}
+        </p>
+
 
         <button
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline"
         >
-          Add Transaction
+          {editTransactionId ? 'Update Transaction' : 'Add Transaction'}
         </button>
 
         <div className="mt-8">
@@ -161,11 +208,26 @@ export default function Dashboard() {
           <div className="max-h-64 overflow-y-auto">
             <ul className="text-left">
               {transactions.map((transaction) => (
-                <li key={transaction.id} className={`mb-4 p-4 rounded-lg shadow ${transaction.type === 'incoming' ? 'bg-green-100' : 'bg-red-100'}`}>
+                <li key={transaction.id} className={mb-4 p-4 rounded-lg shadow ${transaction.type === 'incoming' ? 'bg-green-100' : 'bg-red-100'}}>
                   <p className="text-lg font-bold">{transaction.type === 'incoming' ? 'Incoming' : 'Outgoing'}</p>
                   <p className="text-gray-800">${transaction.amount.toLocaleString()}</p>
                   <p className="text-gray-500 text-sm">{new Date(transaction.date.seconds * 1000).toLocaleString()}</p>
-                  <p className="text-gray-500 text-sm">Category: {transaction.category}</p> {/* Menampilkan Kategori */}
+                  <p className="text-gray-500 text-sm">Category: {transaction.category}</p>
+                  <p className="text-gray-500 text-sm">Description: {transaction.description}</p> {/* New field for description */}
+                  <div className="flex space-x-2 mt-2">
+                    <button
+                      onClick={() => handleEditTransaction(transaction)}
+                      className="bg-blue-500 text-white py-1 px-3 rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTransaction(transaction)}
+                      className="bg-red-500 text-white py-1 px-3 rounded"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -184,45 +246,65 @@ export default function Dashboard() {
       </div>
 
       {/* Sidebar */}
-      {isSidebarVisible && (
-        <div className="absolute top-0 left-0 transform bg-white shadow-lg p-4 w-64 h-full z-50">
-          <button
-            onClick={() => setIsSidebarVisible(false)}
-            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 focus:outline-none"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-          <h2 className="text-2xl font-bold mb-4">Add Category</h2>
-          <div className="space-y-4">
-            <button
-              onClick={() => {
-                setTransactionType('incoming');
-                setIsCategoryModalOpen(true);
-                setIsSidebarVisible(false);
-              }}
-              className="w-full text-left bg-green-500 text-white py-2 px-4 rounded"
-            >
-              Add Incoming Category
-            </button>
-            <button
-              onClick={() => {
-                setTransactionType('outgoing');
-                setIsCategoryModalOpen(true);
-                setIsSidebarVisible(false);
-              }}
-              className="w-full text-left bg-red-500 text-white py-2 px-4 rounded"
-            >
-              Add Outgoing Category
-            </button>
-          </div>
-        </div>
-      )}
+{isSidebarVisible && (
+  <div className="absolute top-0 left-0 transform bg-white shadow-lg p-4 w-64 h-full z-50">
+    <button
+      onClick={() => setIsSidebarVisible(false)}
+      className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 focus:outline-none"
+    >
+      <XMarkIcon className="h-6 w-6" />
+    </button>
+    <h2 className="text-2xl font-bold mb-4">Settings</h2>
+    
+    {/* Currency Selector */}
+    <div className="mb-6">
+      <label className="block text-gray-700 text-sm font-bold mb-2">
+        Select Currency
+      </label>
+      <select
+        value={currency}
+        onChange={(e) => handleCurrencyChange(e.target.value)} // Save on change
+        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+      >
+        <option value="USD">USD - US Dollar</option>
+        <option value="JPY">JPY - Japanese Yen</option>
+        <option value="IDR">IDR - Indonesian Rupiah</option>
+        {/* Tambahkan opsi mata uang lainnya di sini */}
+      </select>
+    </div>
+
+    {/* Other sidebar options like Add Category */}
+    <div className="space-y-4">
+      <button
+        onClick={() => {
+          setTransactionType('incoming');
+          setIsCategoryModalOpen(true);
+          setIsSidebarVisible(false);
+        }}
+        className="w-full text-left bg-green-500 text-white py-2 px-4 rounded"
+      >
+        Add Incoming Category
+      </button>
+      <button
+        onClick={() => {
+          setTransactionType('outgoing');
+          setIsCategoryModalOpen(true);
+          setIsSidebarVisible(false);
+        }}
+        className="w-full text-left bg-red-500 text-white py-2 px-4 rounded"
+      >
+        Add Outgoing Category
+      </button>
+    </div>
+  </div>
+)}
+
 
       {/* Modal Add Transaction */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-20">
           <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm">
-            <h3 className="text-xl font-bold mb-4 text-gray-800">Add Transaction</h3>
+            <h3 className="text-xl font-bold mb-4 text-gray-800">{editTransactionId ? 'Update Transaction' : 'Add Transaction'}</h3>
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-bold mb-2">
                 Transaction Type
@@ -230,13 +312,13 @@ export default function Dashboard() {
               <div className="flex justify-between mb-4">
                 <button
                   onClick={() => setTransactionType('incoming')}
-                  className={`py-2 px-4 rounded focus:outline-none focus:shadow-outline ${transactionType === 'incoming' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+                  className={py-2 px-4 rounded focus:outline-none focus:shadow-outline ${transactionType === 'incoming' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}}
                 >
                   Incoming
                 </button>
                 <button
                   onClick={() => setTransactionType('outgoing')}
-                  className={`py-2 px-4 rounded focus:outline-none focus:shadow-outline ${transactionType === 'outgoing' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+                  className={py-2 px-4 rounded focus:outline-none focus:shadow-outline ${transactionType === 'outgoing' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}}
                 >
                   Outgoing
                 </button>
@@ -273,9 +355,21 @@ export default function Dashboard() {
                   ))}
               </select>
             </div>
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
+                Description
+              </label>
+              <input
+                type="text"
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              />
+            </div>
             <div className="flex justify-between">
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => closeModal()}
                 className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
               >
                 Cancel
@@ -284,7 +378,7 @@ export default function Dashboard() {
                 onClick={handleAddTransaction}
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
               >
-                Add
+                {editTransactionId ? 'Update' : 'Add'}
               </button>
             </div>
           </div>
@@ -303,8 +397,8 @@ export default function Dashboard() {
               <input
                 type="text"
                 id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                value={editedCategoryName}
+                onChange={(e) => setEditedCategoryName(e.target.value)}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               />
             </div>

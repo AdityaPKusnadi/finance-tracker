@@ -1,7 +1,7 @@
-'use client'; // Tambahkan ini di baris pertama
+'use client'; 
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Ganti import dari 'next/router' ke 'next/navigation'
+import { useRouter } from 'next/navigation';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -9,14 +9,29 @@ export default function SplashScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
       router.push('/login');
-    }, 3000); // Durasi splash screen (3 detik)
+    }, 4000); // Durasi splash screen diubah menjadi 4 detik
 
     return () => clearTimeout(timer);
   }, [router]);
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <h1>Welcome to Finance Tracker</h1>
+    <div style={styles.container}>
+      <img src="/splashscreen.gif" alt="Loading..." style={styles.gif} /> {/* Pastikan path ini benar */}
     </div>
   );
 }
+
+const styles = {
+  container: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    backgroundColor: '#f5f5f5',
+  },
+  gif: {
+    width: '100%', // Menyesuaikan ukuran GIF agar memenuhi layar
+    maxWidth: '600px', // Memberikan batasan ukuran maksimal
+    height: 'auto',
+  },
+};

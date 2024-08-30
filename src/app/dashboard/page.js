@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getUserBalance, addTransaction, updateTransaction, deleteTransaction,updateUserCurrency,getUserCurrency } from '../firebase';
+import { getUserBalance, addTransaction, updateTransaction, deleteTransaction, updateUserCurrency, getUserCurrency } from '../firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, onSnapshot, orderBy, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -208,7 +208,7 @@ export default function Dashboard() {
           <div className="max-h-64 overflow-y-auto">
             <ul className="text-left">
               {transactions.map((transaction) => (
-                <li key={transaction.id} className={mb-4 p-4 rounded-lg shadow ${transaction.type === 'incoming' ? 'bg-green-100' : 'bg-red-100'}}>
+                <li key={transaction.id} className={`mb-4 p-4 rounded-lg shadow ${transaction.type === 'incoming' ? 'bg-green-100' : 'bg-red-100'}`}>
                   <p className="text-lg font-bold">{transaction.type === 'incoming' ? 'Incoming' : 'Outgoing'}</p>
                   <p className="text-gray-800">${transaction.amount.toLocaleString()}</p>
                   <p className="text-gray-500 text-sm">{new Date(transaction.date.seconds * 1000).toLocaleString()}</p>
@@ -246,58 +246,58 @@ export default function Dashboard() {
       </div>
 
       {/* Sidebar */}
-{isSidebarVisible && (
-  <div className="absolute top-0 left-0 transform bg-white shadow-lg p-4 w-64 h-full z-50">
-    <button
-      onClick={() => setIsSidebarVisible(false)}
-      className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 focus:outline-none"
-    >
-      <XMarkIcon className="h-6 w-6" />
-    </button>
-    <h2 className="text-2xl font-bold mb-4">Settings</h2>
-    
-    {/* Currency Selector */}
-    <div className="mb-6">
-      <label className="block text-gray-700 text-sm font-bold mb-2">
-        Select Currency
-      </label>
-      <select
-        value={currency}
-        onChange={(e) => handleCurrencyChange(e.target.value)} // Save on change
-        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-      >
-        <option value="USD">USD - US Dollar</option>
-        <option value="JPY">JPY - Japanese Yen</option>
-        <option value="IDR">IDR - Indonesian Rupiah</option>
-        {/* Tambahkan opsi mata uang lainnya di sini */}
-      </select>
-    </div>
+      {isSidebarVisible && (
+        <div className="absolute top-0 left-0 transform bg-white shadow-lg p-4 w-64 h-full z-50">
+          <button
+            onClick={() => setIsSidebarVisible(false)}
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 focus:outline-none"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+          <h2 className="text-2xl font-bold mb-4">Settings</h2>
+          
+          {/* Currency Selector */}
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Select Currency
+            </label>
+            <select
+              value={currency}
+              onChange={(e) => handleCurrencyChange(e.target.value)} // Save on change
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            >
+              <option value="USD">USD - US Dollar</option>
+              <option value="JPY">JPY - Japanese Yen</option>
+              <option value="IDR">IDR - Indonesian Rupiah</option>
+              {/* Tambahkan opsi mata uang lainnya di sini */}
+            </select>
+          </div>
 
-    {/* Other sidebar options like Add Category */}
-    <div className="space-y-4">
-      <button
-        onClick={() => {
-          setTransactionType('incoming');
-          setIsCategoryModalOpen(true);
-          setIsSidebarVisible(false);
-        }}
-        className="w-full text-left bg-green-500 text-white py-2 px-4 rounded"
-      >
-        Add Incoming Category
-      </button>
-      <button
-        onClick={() => {
-          setTransactionType('outgoing');
-          setIsCategoryModalOpen(true);
-          setIsSidebarVisible(false);
-        }}
-        className="w-full text-left bg-red-500 text-white py-2 px-4 rounded"
-      >
-        Add Outgoing Category
-      </button>
-    </div>
-  </div>
-)}
+          {/* Other sidebar options like Add Category */}
+          <div className="space-y-4">
+            <button
+              onClick={() => {
+                setTransactionType('incoming');
+                setIsCategoryModalOpen(true);
+                setIsSidebarVisible(false);
+              }}
+              className="w-full text-left bg-green-500 text-white py-2 px-4 rounded"
+            >
+              Add Incoming Category
+            </button>
+            <button
+              onClick={() => {
+                setTransactionType('outgoing');
+                setIsCategoryModalOpen(true);
+                setIsSidebarVisible(false);
+              }}
+              className="w-full text-left bg-red-500 text-white py-2 px-4 rounded"
+            >
+              Add Outgoing Category
+            </button>
+          </div>
+        </div>
+      )}
 
 
       {/* Modal Add Transaction */}
@@ -312,13 +312,13 @@ export default function Dashboard() {
               <div className="flex justify-between mb-4">
                 <button
                   onClick={() => setTransactionType('incoming')}
-                  className={py-2 px-4 rounded focus:outline-none focus:shadow-outline ${transactionType === 'incoming' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}}
+                  className={`py-2 px-4 rounded focus:outline-none focus:shadow-outline ${transactionType === 'incoming' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}
                 >
                   Incoming
                 </button>
                 <button
                   onClick={() => setTransactionType('outgoing')}
-                  className={py-2 px-4 rounded focus:outline-none focus:shadow-outline ${transactionType === 'outgoing' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}}
+                  className={`py-2 px-4 rounded focus:outline-none focus:shadow-outline ${transactionType === 'outgoing' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}
                 >
                   Outgoing
                 </button>

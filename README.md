@@ -1,4 +1,3 @@
-# Finance Tracker
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Ffinancialtracker.nisgroup.online)](https://financialtracker.nisgroup.online)
 
 # Finance Tracker

@@ -65,7 +65,7 @@ This project is configured to be exported as a static website using Next.js with
         unoptimized: true, // Optional, if you are using images from an external domain
     },
     };
-    export default nextConfig;
+    export default nextConfig;    
 
 ### Technologies Used
 - Next.js - A React framework for web applications.

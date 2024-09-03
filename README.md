@@ -59,7 +59,6 @@ Your application will be available at the domain associated with your cPanel acc
 ### Static Export Configuration
 This project is configured to be exported as a static website using Next.js with the following settings in next.config.mjs:
     ```bash
-    /** @type {import('next').NextConfig} */
     const nextConfig = {
     output: 'export',
     images: {

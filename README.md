@@ -76,13 +76,13 @@ Make sure you have the following tools installed before starting:
 This project is configured to be exported as a static website using Next.js with the following settings in next.config.mjs:
 
      ```bash
-     const nextConfig = {
-     output: 'export',
-     images: {
-          unoptimized: true, // Optional, if you are using images from an external domain
-     },
-     };
-     export default nextConfig;    
+        const nextConfig = {
+        output: 'export',
+        images: {
+            unoptimized: true, // Optional, if you are using images from an external domain
+        },
+        };
+        export default nextConfig;    
      ```
 
 ### Technologies Used

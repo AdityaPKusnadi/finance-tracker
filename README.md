@@ -83,6 +83,7 @@ This project is configured to be exported as a static website using Next.js with
      },
      };
      export default nextConfig;    
+     ```
 
 ### Technologies Used
 

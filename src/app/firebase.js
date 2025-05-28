@@ -1,9 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, addDoc, collection } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, addDoc, collection, deleteDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
-    
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
@@ -31,14 +36,21 @@ export const updateUserCurrency = async (userId, currency) => {
   await updateDoc(userDocRef, { currency });
 };
 
-export const updateTransaction = async (userId, transactionId, amount, type, category) => {
+export const updateTransaction = async (userId, transactionId, amount, type, category, description) => {
   const transactionDocRef = doc(db, 'users', userId, 'transactions', transactionId);
-  await updateDoc(transactionDocRef, {
-      amount,
-      type,
-      category,
-      date: new Date()
-  });
+  const updateData = {
+    amount,
+    type,
+    category,
+    date: new Date()
+  };
+  
+  // Add description if provided, otherwise remove it
+  if (description) {
+    updateData.description = description;
+  }
+  
+  await updateDoc(transactionDocRef, updateData);
 };
 
 export const deleteTransaction = async (userId, transactionId, amount, type) => {

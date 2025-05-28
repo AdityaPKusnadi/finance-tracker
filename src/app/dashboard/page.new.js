@@ -4,17 +4,13 @@ import { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { getUserBalance, addTransaction, updateTransaction, deleteTransaction, updateUserCurrency, getUserCurrency } from '../firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, onSnapshot, orderBy, addDoc, deleteDoc, doc, updateDoc, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { ArrowLeftOnRectangleIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/solid';
 import ThemeToggle from '@/components/ThemeToggle';
-import TransactionCharts from '@/components/TransactionCharts';
-import CurrencySelector from '@/components/CurrencySelector';
-import CategorySelector from '@/components/CategorySelector';
-import SummaryCard from '@/components/SummaryCard';
-import DateRangeFilter from '@/components/DateRangeFilter';
 
-export default function Dashboard() {  const [balance, setBalance] = useState(0);
+export default function Dashboard() {
+  const [balance, setBalance] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [transactionType, setTransactionType] = useState('incoming');
@@ -22,7 +18,6 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
   const [description, setDescription] = useState('');
   const [userId, setUserId] = useState(null);
   const [transactions, setTransactions] = useState([]);
-  const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -30,8 +25,6 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
   const [editedCategoryName, setEditedCategoryName] = useState('');
   const [editTransactionId, setEditTransactionId] = useState(null);
   const [currency, setCurrency] = useState('USD');
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
 
   const auth = getAuth();
   const router = useRouter();
@@ -82,38 +75,6 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
     return () => unsubscribe();
   }, [auth, router]);
 
-  // Filter transactions based on selected date range
-  useEffect(() => {
-    if (transactions.length > 0) {
-      if (!startDate && !endDate) {
-        setFilteredTransactions(transactions);
-      } else {
-        const filtered = transactions.filter(transaction => {
-          const transactionDate = new Date(transaction.date.seconds * 1000);
-          
-          if (startDate && endDate) {
-            return transactionDate >= startDate && transactionDate <= endDate;
-          } else if (startDate) {
-            return transactionDate >= startDate;
-          } else if (endDate) {
-            return transactionDate <= endDate;
-          }
-          
-          return true;
-        });
-        setFilteredTransactions(filtered);
-      }
-    } else {
-      setFilteredTransactions([]);
-    }
-  }, [transactions, startDate, endDate]);
-
-  // Handle date range changes from the DateRangeFilter component
-  const handleDateRangeChange = (start, end) => {
-    setStartDate(start);
-    setEndDate(end);
-  };
-
   const handleCurrencyChange = async (newCurrency) => {
     setCurrency(newCurrency);
     if (userId) {
@@ -124,6 +85,7 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
   const handleAddTransaction = async () => {
     const value = parseFloat(amount);
     if (isNaN(value) || !userId || !category) return;
+  
     try {
       if (editTransactionId) {
         await updateTransaction(userId, editTransactionId, value, transactionType, category, description);
@@ -146,19 +108,13 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
     setIsModalOpen(true);
     setEditTransactionId(transaction.id);
   };
+
   const handleDeleteTransaction = async (transaction) => {
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete this ${transaction.type === 'incoming' ? 'income' : 'expense'} transaction of ${transaction.amount.toLocaleString(undefined, { style: 'currency', currency })}?`
-    );
-    
-    if (!confirmDelete) return;
-    
     try {
       const updatedBalance = await deleteTransaction(userId, transaction.id, transaction.amount, transaction.type);
       setBalance(updatedBalance);
     } catch (error) {
       console.error('Failed to delete transaction:', error);
-      alert('Failed to delete transaction. Please try again.');
     }
   };
 
@@ -235,7 +191,8 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
         <ThemeToggle />
       </header>
 
-      {/* Main Content */}      <main className="flex-1 flex flex-col items-center p-4 md:p-6 max-w-4xl mx-auto w-full">
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center p-4 md:p-6 max-w-4xl mx-auto w-full">
         {/* Balance Card */}
         <div className="w-full bg-card rounded-xl shadow-sm overflow-hidden mb-6">
           <div className="p-6 text-center">
@@ -251,60 +208,14 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
             </button>
           </div>
         </div>
-        
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 w-full">          <SummaryCard 
-            title="Income" 
-            amount={filteredTransactions
-              .filter(t => t.type === 'incoming')
-              .reduce((acc, t) => acc + t.amount, 0)}
-            currency={currency}
-            bgClass="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
-            textClass="text-white"
-            icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 7-10 10"/><path d="M7 7h10v10"/></svg>}
-          />
-          <SummaryCard 
-            title="Expenses" 
-            amount={filteredTransactions
-              .filter(t => t.type === 'outgoing')
-              .reduce((acc, t) => acc + t.amount, 0)}
-            currency={currency}
-            bgClass="bg-gradient-to-r from-red-500 to-rose-600 text-white"
-            textClass="text-white"
-            icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 17 10-10"/><path d="M17 17V7H7"/></svg>}
-          />
-          <SummaryCard 
-            title="Balance" 
-            amount={filteredTransactions
-              .reduce((acc, t) => t.type === 'incoming' ? acc + t.amount : acc - t.amount, 0)}
-            currency={currency}
-            bgClass="bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-            textClass="text-white"
-            icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>}
-          />
-        </div>
-          {/* Transaction Charts */}
-        <div className="w-full mb-6">
-          <TransactionCharts 
-            transactions={filteredTransactions} 
-            currency={currency} 
-            startDate={startDate}
-            endDate={endDate}
-          />
-        </div>        {/* Transaction History */}
-        <div className="w-full bg-card rounded-xl shadow-sm overflow-hidden">          <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Transaction History</h3>
-              <div className="text-sm text-muted-foreground">
-                {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
-                {(startDate || endDate) && ' in selected range'}
-              </div>
-            </div>
-            
-            {/* Date Range Filter */}
-            <DateRangeFilter onFilterChange={handleDateRangeChange} /><div className="max-h-[400px] overflow-y-auto pr-2 -mr-2">
+
+        {/* Transaction History */}
+        <div className="w-full bg-card rounded-xl shadow-sm overflow-hidden">
+          <div className="p-6">
+            <h3 className="text-xl font-semibold mb-4">Transaction History</h3>
+            <div className="max-h-[400px] overflow-y-auto pr-2 -mr-2">
               <ul className="space-y-3">
-                {filteredTransactions.map((transaction) => (
+                {transactions.map((transaction) => (
                   <li key={transaction.id} 
                       className={`p-4 rounded-lg ${
                         transaction.type === 'incoming' 
@@ -353,19 +264,11 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
                   </li>
                 ))}
               </ul>
-                {filteredTransactions.length === 0 && (
+              
+              {transactions.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  {transactions.length === 0 ? (
-                    <>
-                      <p>No transactions yet</p>
-                      <p className="text-sm">Add a transaction to get started</p>
-                    </>
-                  ) : (
-                    <>
-                      <p>No transactions in selected date range</p>
-                      <p className="text-sm">Try adjusting your filters</p>
-                    </>
-                  )}
+                  <p>No transactions yet</p>
+                  <p className="text-sm">Add a transaction to get started</p>
                 </div>
               )}
             </div>
@@ -395,15 +298,25 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
-            {/* Currency Selector */}
+          
+          {/* Currency Selector */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-muted-foreground mb-2">
               Select Currency
             </label>
-            <CurrencySelector 
-              value={currency} 
-              onChange={handleCurrencyChange} 
-            />
+            <select
+              value={currency}
+              onChange={(e) => handleCurrencyChange(e.target.value)}
+              className="w-full p-2.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="USD">USD - US Dollar</option>
+              <option value="JPY">JPY - Japanese Yen</option>
+              <option value="IDR">IDR - Indonesian Rupiah</option>
+              <option value="EUR">EUR - Euro</option>
+              <option value="GBP">GBP - British Pound</option>
+              <option value="CNY">CNY - Chinese Yuan</option>
+              <option value="AUD">AUD - Australian Dollar</option>
+            </select>
           </div>
 
           <div className="space-y-4 mt-8">
@@ -518,18 +431,29 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
                 />
               </div>
             </div>
-              {/* Category */}
+            
+            {/* Category */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
+              <label className="block text-sm font-medium text-muted-foreground mb-2" htmlFor="category">
                 Category
               </label>
-              <CategorySelector
-                categories={categories}
+              <select
+                id="category"
                 value={category}
-                onChange={setCategory}
-                transactionType={transactionType}
-              />
-              <div className="mt-2 text-right">
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full p-2.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              >
+                <option value="">Select Category</option>
+                {categories
+                  .filter((cat) => cat.type === transactionType)
+                  .map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+              </select>
+              <div className="mt-1 text-right">
                 <button 
                   type="button"
                   onClick={() => {

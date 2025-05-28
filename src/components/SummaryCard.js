@@ -1,5 +1,7 @@
 'use client';
 
+import { formatCurrency } from '@/utils/currency';
+
 const SummaryCard = ({ title, amount, currency, icon, bgClass, textClass }) => {
   return (
     <div className={`relative overflow-hidden rounded-xl p-4 ${bgClass || 'bg-card'}`}>
@@ -8,7 +10,7 @@ const SummaryCard = ({ title, amount, currency, icon, bgClass, textClass }) => {
           <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
           <p className={`text-xl md:text-2xl font-bold ${textClass}`}>
             {typeof amount === 'number' 
-              ? amount.toLocaleString(undefined, { style: 'currency', currency })
+              ? formatCurrency(amount, currency)
               : amount}
           </p>
         </div>

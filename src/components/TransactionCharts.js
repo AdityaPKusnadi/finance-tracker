@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, Title } from 'chart.js';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/utils/currency';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, Title);
 
@@ -165,7 +166,7 @@ const TransactionCharts = ({ transactions, currency, startDate, endDate }) => {
             const dataset = context.dataset;
             const total = dataset.data.reduce((acc, data) => acc + data, 0);
             const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-            return `${label}: ${value.toLocaleString(undefined, { style: 'currency', currency })} (${percentage}%)`;
+            return `${label}: ${formatCurrency(value, currency)} (${percentage}%)`;
           }
         },
         padding: 12,
@@ -250,11 +251,10 @@ const TransactionCharts = ({ transactions, currency, startDate, endDate }) => {
                   <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                     No income data
                   </div>
-                )}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                )}                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
                   <div className="text-xs text-muted-foreground">Total</div>
                   <div className="font-bold text-green-600 dark:text-green-400">
-                    {totalIncome.toLocaleString(undefined, { style: 'currency', currency })}
+                    {formatCurrency(totalIncome, currency)}
                   </div>
                 </div>
               </div>
@@ -271,11 +271,10 @@ const TransactionCharts = ({ transactions, currency, startDate, endDate }) => {
                   <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                     No expense data
                   </div>
-                )}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                )}                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
                   <div className="text-xs text-muted-foreground">Total</div>
                   <div className="font-bold text-red-600 dark:text-red-400">
-                    {totalExpense.toLocaleString(undefined, { style: 'currency', currency })}
+                    {formatCurrency(totalExpense, currency)}
                   </div>
                 </div>
               </div>

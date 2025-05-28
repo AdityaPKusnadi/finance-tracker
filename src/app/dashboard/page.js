@@ -13,8 +13,11 @@ import CurrencySelector from '@/components/CurrencySelector';
 import CategorySelector from '@/components/CategorySelector';
 import SummaryCard from '@/components/SummaryCard';
 import DateRangeFilter from '@/components/DateRangeFilter';
+import { formatCurrency } from '@/utils/currency';
 
-export default function Dashboard() {  const [balance, setBalance] = useState(0);
+export default function Dashboard() {
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [balance, setBalance] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [transactionType, setTransactionType] = useState('incoming');
@@ -32,9 +35,13 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
   const [currency, setCurrency] = useState('USD');
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-
   const auth = getAuth();
   const router = useRouter();
+
+  // Handle hydration
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -145,10 +152,9 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
     setDescription(transaction.description);
     setIsModalOpen(true);
     setEditTransactionId(transaction.id);
-  };
-  const handleDeleteTransaction = async (transaction) => {
+  };  const handleDeleteTransaction = async (transaction) => {
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete this ${transaction.type === 'incoming' ? 'income' : 'expense'} transaction of ${transaction.amount.toLocaleString(undefined, { style: 'currency', currency })}?`
+      `Are you sure you want to delete this ${transaction.type === 'incoming' ? 'income' : 'expense'} transaction of ${formatCurrency(transaction.amount, currency)}?`
     );
     
     if (!confirmDelete) return;
@@ -235,13 +241,11 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
         <ThemeToggle />
       </header>
 
-      {/* Main Content */}      <main className="flex-1 flex flex-col items-center p-4 md:p-6 max-w-4xl mx-auto w-full">
-        {/* Balance Card */}
+      {/* Main Content */}      <main className="flex-1 flex flex-col items-center p-4 md:p-6 max-w-4xl mx-auto w-full">        {/* Balance Card */}
         <div className="w-full bg-card rounded-xl shadow-sm overflow-hidden mb-6">
-          <div className="p-6 text-center">
-            <p className="text-sm font-medium text-muted-foreground mb-1">Current Balance ({currency})</p>
+          <div className="p-6 text-center">            <p className="text-sm font-medium text-muted-foreground mb-1">Current Balance ({currency})</p>
             <p className={`text-4xl font-bold mb-4 ${balance >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-              {balance.toLocaleString(undefined, { style: 'currency', currency })}
+              {formatCurrency(balance, currency)}
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
@@ -312,10 +316,8 @@ export default function Dashboard() {  const [balance, setBalance] = useState(0)
                           : 'bg-red-100/30 dark:bg-red-900/20 border-l-4 border-red-500'
                       } transition-all`}>
                     <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium">{transaction.type === 'incoming' ? 'Incoming' : 'Outgoing'}</p>
-                        <p className={`text-lg font-bold ${transaction.type === 'incoming' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {transaction.amount.toLocaleString(undefined, { style: 'currency', currency })}
+                      <div>                        <p className="font-medium">{transaction.type === 'incoming' ? 'Incoming' : 'Outgoing'}</p>                        <p className={`text-lg font-bold ${transaction.type === 'incoming' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {formatCurrency(transaction.amount, currency)}
                         </p>
                         <p className="text-muted-foreground text-sm mt-1">{new Date(transaction.date.seconds * 1000).toLocaleString()}</p>
                         <div className="mt-1">

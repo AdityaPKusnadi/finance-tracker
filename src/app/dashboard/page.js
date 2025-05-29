@@ -275,15 +275,32 @@ export default function Dashboard() {
       }
     }
   };const handleDeleteTransaction = async (transaction) => {
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete this ${transaction.type === 'incoming' ? 'income' : 'expense'} transaction of ${formatCurrency(transaction.amount, currency)}?`
-    );
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: `Are you sure you want to delete this ${transaction.type === 'incoming' ? 'income' : 'expense'} transaction of ${formatCurrency(transaction.amount, currency)}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280'
+    });
     
-    if (!confirmDelete) return;
+    if (!result.isConfirmed) return;
     
     try {
-      const updatedBalance = await deleteTransaction(userId, transaction.id, transaction.amount, transaction.type);
-      setBalance(updatedBalance);    } catch (error) {
+      const updatedBalance = await deleteTransaction(userId, transaction.id, transaction.amount, transaction.type, transaction.walletId);
+      setBalance(updatedBalance);
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Deleted',
+        text: 'Transaction has been deleted successfully.',
+        confirmButtonColor: '#3B82F6',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (error) {
       console.error('Failed to delete transaction:', error);
       Swal.fire({
         icon: 'error',
@@ -580,9 +597,7 @@ export default function Dashboard() {
             setTransactionType('outgoing');
             setIsModalOpen(true);
           }}        />
-      )}
-
-      {/* Enhanced Transaction Modal */}
+      )}      {/* Enhanced Transaction Modal */}
       {isModalOpen && (
         <EnhancedTransactionModal
           isOpen={isModalOpen}
@@ -612,6 +627,8 @@ export default function Dashboard() {
             details: transactionDetails
           } : null}
           isEditing={!!editTransactionId}
+          wallets={wallets}
+          activeWallet={activeWallet}
         />
       )}
     </div>

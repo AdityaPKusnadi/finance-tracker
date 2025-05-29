@@ -14,7 +14,8 @@ import {
   ListBulletIcon,
   PlusIcon,
   MinusIcon,
-  TrashIcon
+  TrashIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 
 const EnhancedTransactionModal = ({
@@ -25,13 +26,16 @@ const EnhancedTransactionModal = ({
   categories,
   onAddCategory,
   editTransaction = null,
-  isEditing = false
+  isEditing = false,
+  wallets = [], // Add wallets prop
+  activeWallet = null // Add activeWallet prop
 }) => {
   const [formData, setFormData] = useState({
     type: 'outgoing',
     amount: '',
     category: '',
     description: '',
+    walletId: activeWallet?.id || null, // Add wallet selection
     details: {
       subcategories: [],
       totalAmount: 0,
@@ -45,7 +49,6 @@ const EnhancedTransactionModal = ({
   const [calculatorResult, setCalculatorResult] = useState('');
   const [convertedAmount, setConvertedAmount] = useState('');
   const [activeTab, setActiveTab] = useState('basic'); // basic, detailed, converter
-
   // Quick amount buttons for fast input
   const quickAmounts = [
     { label: '10K', value: 10000 },
@@ -53,7 +56,8 @@ const EnhancedTransactionModal = ({
     { label: '50K', value: 50000 },
     { label: '100K', value: 100000 },
     { label: '250K', value: 250000 },
-    { label: '500K', value: 500000 },  ];
+    { label: '500K', value: 500000 }
+  ];
 
   // Helper function to get category icon
   const getCategoryIcon = (iconId) => {
@@ -80,9 +84,8 @@ const EnhancedTransactionModal = ({
     return category ? {
       icon: getCategoryIcon(category.icon),
       color: category.color || '#3B82F6'
-    } : null;
-  };
-
+    } : null;  };
+  
   // Initialize form data when editing
   useEffect(() => {
     if (isEditing && editTransaction) {
@@ -91,6 +94,7 @@ const EnhancedTransactionModal = ({
         amount: editTransaction.amount.toString(),
         category: editTransaction.category,
         description: editTransaction.description || '',
+        walletId: editTransaction.walletId || activeWallet?.id || null,
         details: editTransaction.details || {
           subcategories: [],
           totalAmount: 0,
@@ -98,11 +102,14 @@ const EnhancedTransactionModal = ({
         }
       });
     } else if (!isEditing) {
+      // Find default wallet if available
+      const defaultWallet = wallets.find(wallet => wallet.isDefault);
+      
       setFormData({
         type: 'outgoing',
         amount: '',
         category: '',
-        description: '',
+        description: '',        walletId: activeWallet?.id || defaultWallet?.id || null,
         details: {
           subcategories: [],
           totalAmount: 0,
@@ -110,7 +117,8 @@ const EnhancedTransactionModal = ({
         }
       });
     }
-  }, [isEditing, editTransaction, isOpen]);
+  }, [isEditing, editTransaction, isOpen, activeWallet, wallets]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
@@ -125,18 +133,22 @@ const EnhancedTransactionModal = ({
       return;
     }
 
+    if (!formData.walletId) {
+      notify('Please select a wallet', 'warning');
+      return;
+    }
+
     onSubmit({
       ...formData,
       amount: amount,
-      details: showDetails ? formData.details : null
-    });
-
-    // Reset form
+      details: (activeTab === 'detailed' && formData.details.subcategories.length > 0) ? formData.details : null
+    });// Reset form
     setFormData({
       type: 'outgoing',
       amount: '',
       category: '',
       description: '',
+      walletId: activeWallet?.id || null,
       details: {
         subcategories: [],
         totalAmount: 0,
@@ -299,7 +311,61 @@ const EnhancedTransactionModal = ({
                     <span className="font-medium">Expense</span>
                   </button>
                 </div>
-              </div>              {/* Amount Section */}
+              </div>              {/* Wallet Selection */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-3">
+                  Wallet <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={formData.walletId || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, walletId: e.target.value || null }))}
+                    className="w-full p-4 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                    required
+                  >
+                    <option value="">Select a wallet...</option>
+                    {wallets.map((wallet) => (
+                      <option key={wallet.id} value={wallet.id}>
+                        {wallet.name} {wallet.isDefault ? '(Default)' : ''} - {formatCurrency(wallet.balance || 0, currency)}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <ChevronDownIcon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                </div>
+                {formData.walletId && (
+                  <div className="mt-2 p-3 bg-secondary/30 rounded-lg">
+                    {(() => {
+                      const selectedWallet = wallets.find(w => w.id === formData.walletId);
+                      return selectedWallet ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Current Balance:</span>
+                            <span className="font-medium" style={{ color: selectedWallet.color }}>
+                              {formatCurrency(selectedWallet.balance || 0, currency)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">After Transaction:</span>
+                            <span className={`font-medium ${
+                              formData.type === 'incoming' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {formData.amount ? formatCurrency(
+                                (selectedWallet.balance || 0) + 
+                                (formData.type === 'incoming' ? 1 : -1) * (parseFloat(formData.amount) || 0), 
+                                currency
+                              ) : formatCurrency(selectedWallet.balance || 0, currency)}
+                            </span>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* Amount Section */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-muted-foreground">
@@ -426,8 +492,7 @@ const EnhancedTransactionModal = ({
           )}
 
           {/* Footer */}
-          <div className="p-6 border-t border-border bg-secondary/10">
-            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+          <div className="p-6 border-t border-border bg-secondary/10">            <div className="flex flex-col sm:flex-row gap-3 justify-end">
               <button
                 type="button"
                 onClick={onClose}
@@ -437,7 +502,7 @@ const EnhancedTransactionModal = ({
               </button>
               <button
                 type="submit"
-                disabled={!formData.amount || !formData.category}
+                disabled={!formData.amount || !formData.category || !formData.walletId}
                 className="px-6 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isEditing ? 'Update Transaction' : 'Add Transaction'}

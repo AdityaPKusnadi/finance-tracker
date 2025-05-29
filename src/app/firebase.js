@@ -36,42 +36,126 @@ export const updateUserCurrency = async (userId, currency) => {
   await updateDoc(userDocRef, { currency });
 };
 
-export const updateTransaction = async (userId, transactionId, amount, type, category, description) => {
+export const updateTransaction = async (userId, transactionId, amount, type, category, description, walletId = null, details = null) => {
   const transactionDocRef = doc(db, 'users', userId, 'transactions', transactionId);
+  
+  // Get the old transaction data first
+  const oldTransaction = await getDoc(transactionDocRef);
+  const oldData = oldTransaction.data();
+  
+  // Revert old transaction from wallet/balance
+  if (oldData.walletId) {
+    const walletDocRef = doc(db, 'users', userId, 'wallets', oldData.walletId);
+    const walletDoc = await getDoc(walletDocRef);
+    if (walletDoc.exists()) {
+      let walletBalance = walletDoc.data().balance || 0;
+      // Revert old transaction
+      if (oldData.type === 'incoming') {
+        walletBalance -= oldData.amount;
+      } else {
+        walletBalance += oldData.amount;
+      }
+      await updateDoc(walletDocRef, { balance: walletBalance, updatedAt: new Date() });
+    }
+  } else {
+    // Revert from global balance
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+      let currentBalance = userDoc.data().balance;
+      if (oldData.type === 'incoming') {
+        currentBalance -= oldData.amount;
+      } else {
+        currentBalance += oldData.amount;
+      }
+      await updateDoc(userDocRef, { balance: currentBalance });
+    }
+  }
+
+  // Apply new transaction to wallet/balance
+  if (walletId) {
+    const walletDocRef = doc(db, 'users', userId, 'wallets', walletId);
+    const walletDoc = await getDoc(walletDocRef);
+    if (walletDoc.exists()) {
+      let walletBalance = walletDoc.data().balance || 0;
+      if (type === 'incoming') {
+        walletBalance += amount;
+      } else {
+        walletBalance -= amount;
+      }
+      await updateDoc(walletDocRef, { balance: walletBalance, updatedAt: new Date() });
+    }
+  } else {
+    // Update global balance
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+      let currentBalance = userDoc.data().balance;
+      if (type === 'incoming') {
+        currentBalance += amount;
+      } else {
+        currentBalance -= amount;
+      }
+      await updateDoc(userDocRef, { balance: currentBalance });
+    }
+  }
+
   const updateData = {
     amount,
     type,
     category,
-    date: new Date()
+    date: new Date(),
+    walletId: walletId || null,
   };
   
   // Add description if provided, otherwise remove it
   if (description) {
     updateData.description = description;
   }
+
+  // Add detailed breakdown if available
+  if (details) {
+    updateData.details = details;
+  }
   
   await updateDoc(transactionDocRef, updateData);
 };
 
-export const deleteTransaction = async (userId, transactionId, amount, type) => {
+export const deleteTransaction = async (userId, transactionId, amount, type, walletId = null) => {
   const transactionDocRef = doc(db, 'users', userId, 'transactions', transactionId);
   await deleteDoc(transactionDocRef);
 
-  const userDocRef = doc(db, 'users', userId);
-  const userDoc = await getDoc(userDocRef);
-
-  if (userDoc.exists()) {
-      let currentBalance = userDoc.data().balance;
+  // Update wallet balance or global balance
+  if (walletId) {
+    const walletDocRef = doc(db, 'users', userId, 'wallets', walletId);
+    const walletDoc = await getDoc(walletDocRef);
+    if (walletDoc.exists()) {
+      let walletBalance = walletDoc.data().balance || 0;
+      // Revert the transaction
       if (type === 'incoming') {
-          currentBalance -= amount;
+        walletBalance -= amount;
       } else {
-          currentBalance += amount;
+        walletBalance += amount;
       }
-
-      await updateDoc(userDocRef, { balance: currentBalance });
-      return currentBalance;
+      await updateDoc(walletDocRef, { balance: walletBalance, updatedAt: new Date() });
+    }
   } else {
-      throw new Error('User document does not exist');
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+        let currentBalance = userDoc.data().balance;
+        if (type === 'incoming') {
+            currentBalance -= amount;
+        } else {
+            currentBalance += amount;
+        }
+
+        await updateDoc(userDocRef, { balance: currentBalance });
+        return currentBalance;
+    } else {
+        throw new Error('User document does not exist');
+    }
   }
 };
 
@@ -87,21 +171,37 @@ export const getUserBalance = async (userId) => {
     }
   };
   
-  // Add a transaction to Firestore
-  export const addTransaction = async (userId, amount, type, category, description) => {
+  // Add a transaction to Firestore with wallet support
+  export const addTransaction = async (userId, amount, type, category, description, walletId = null, details = null) => {
     const userDocRef = doc(db, 'users', userId);
     const balanceDoc = await getDoc(userDocRef);
   
     if (balanceDoc.exists()) {
       let currentBalance = balanceDoc.data().balance;
-      if (type === 'incoming') {
-        currentBalance += amount;
+      
+      // If walletId is provided, update wallet balance instead of global balance
+      if (walletId) {
+        const walletDocRef = doc(db, 'users', userId, 'wallets', walletId);
+        const walletDoc = await getDoc(walletDocRef);
+        
+        if (walletDoc.exists()) {
+          let walletBalance = walletDoc.data().balance || 0;
+          if (type === 'incoming') {
+            walletBalance += amount;
+          } else {
+            walletBalance -= amount;
+          }
+          await updateDoc(walletDocRef, { balance: walletBalance, updatedAt: new Date() });
+        }
       } else {
-        currentBalance -= amount;
+        // Update global balance if no wallet specified
+        if (type === 'incoming') {
+          currentBalance += amount;
+        } else {
+          currentBalance -= amount;
+        }
+        await updateDoc(userDocRef, { balance: currentBalance });
       }
-  
-      // Update balance in Firestore
-      await updateDoc(userDocRef, { balance: currentBalance });
   
       // Prepare transaction data
       const transactionData = {
@@ -109,18 +209,24 @@ export const getUserBalance = async (userId) => {
         type: type,
         category: category,
         date: new Date(),
+        walletId: walletId || null,
       };
   
       // Add description if it exists
       if (description) {
         transactionData.description = description;
       }
+
+      // Add detailed breakdown if available
+      if (details) {
+        transactionData.details = details;
+      }
   
       // Add the transaction to the user's transactions collection
       const transactionsCollectionRef = collection(db, 'users', userId, 'transactions');
       await addDoc(transactionsCollectionRef, transactionData);
   
-      return currentBalance;
+      return walletId ? null : currentBalance; // Return null if wallet-specific, global balance otherwise
     } else {
       throw new Error('User document does not exist');
     }

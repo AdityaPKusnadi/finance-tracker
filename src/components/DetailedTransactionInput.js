@@ -59,6 +59,20 @@ const DetailedTransactionInput = ({
       { name: 'Parking', icon: '🅿️' },
       { name: 'Maintenance', icon: '🔧' },
     ],
+    'Utilities': [
+      { name: 'Electricity', icon: '⚡' },
+      { name: 'Water', icon: '💧' },
+      { name: 'Gas', icon: '🔥' },
+      { name: 'Internet', icon: '🌐' },
+      { name: 'Phone', icon: '📞' },
+    ],
+    'Education': [
+      { name: 'Tuition', icon: '🎓' },
+      { name: 'Books & Supplies', icon: '📚' },
+      { name: 'Online Courses', icon: '💻' },
+      { name: 'Certification', icon: '📜' },
+      { name: 'Training', icon: '👨‍🏫' },
+    ],
   };
 
   useEffect(() => {
@@ -114,7 +128,7 @@ const DetailedTransactionInput = ({
 
   const calculateTotal = () => {
     const total = details.subcategories.reduce((sum, sub) => {
-      return sum + (parseFloat(sub.amount) || 0);
+      return sum + ((parseFloat(sub.amount) || 0) * (parseInt(sub.quantity) || 1));
     }, 0);
 
     if (total !== details.totalAmount) {
@@ -129,137 +143,207 @@ const DetailedTransactionInput = ({
     calculateTotal();
   }, [details.subcategories]);
 
+  const copyToClipboard = () => {
+    const total = calculateTotal();
+    const summary = `${category} breakdown: ${formatCurrency(total, currency)}\n${details.subcategories.map(s => `• ${s.name}: ${formatCurrency((s.amount || 0) * (s.quantity || 1), currency)} (${s.quantity}x ${formatCurrency(s.amount || 0, currency)})`).join('\n')}`;
+    navigator.clipboard.writeText(summary);
+  };
+
   if (!categoryDetails[category]) {
     return null; // Don't show detailed input for categories without predefined subcategories
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-foreground">Detailed Breakdown</h4>
-        <span className="text-xs text-muted-foreground">
-          Total: {formatCurrency(details.totalAmount, currency)}
-        </span>
+    <div className="space-y-6">
+      {/* Header with total */}
+      <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
+        <div>
+          <h4 className="text-lg font-semibold text-foreground">Detailed Breakdown</h4>
+          <p className="text-sm text-muted-foreground">Break down your {category.toLowerCase()} expenses</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-muted-foreground">Total Amount</p>
+          <p className="text-xl font-bold text-primary">
+            {formatCurrency(details.totalAmount, currency)}
+          </p>
+        </div>
       </div>
 
-      {/* Add Subcategory Buttons */}
-      <div className="grid grid-cols-2 gap-2">
-        {availableSubcategories.map((subcat) => (
-          <button
-            key={subcat.name}
-            type="button"
-            onClick={() => addSubcategory(subcat)}
-            disabled={details.subcategories.some(s => s.name === subcat.name)}
-            className="flex items-center space-x-2 p-2 text-xs border border-border rounded-lg hover:bg-secondary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span>{subcat.icon}</span>
-            <span>{subcat.name}</span>
-          </button>
-        ))}
-      </div>
+      {/* Quick Add Subcategory Buttons */}
+      {availableSubcategories.length > 0 && (
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-3">Quick Add Items:</h5>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {availableSubcategories.map((subcat) => (
+              <button
+                key={subcat.name}
+                type="button"
+                onClick={() => addSubcategory(subcat)}
+                className="flex items-center gap-2 p-3 text-sm bg-secondary/50 hover:bg-secondary rounded-lg transition-colors border border-border/50 hover:border-border"
+                disabled={details.subcategories.some(sub => sub.name === subcat.name)}
+              >
+                <span className="text-lg">{subcat.icon}</span>
+                <span className="font-medium">{subcat.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Subcategory Details */}
+      {/* Added Subcategories List */}
       {details.subcategories.length > 0 && (
-        <div className="space-y-3">
-          <h5 className="text-xs font-medium text-muted-foreground">Breakdown Details</h5>
-          
-          {details.subcategories.map((sub) => (
-            <div key={sub.id} className="bg-secondary/20 rounded-lg p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span>{sub.icon}</span>
-                  <span className="text-sm font-medium">{sub.name}</span>
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-3">Added Items:</h5>
+          <div className="space-y-3">
+            {details.subcategories.map((sub) => (
+              <div key={sub.id} className="p-4 bg-card border border-border rounded-lg">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{sub.icon}</span>
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Name */}
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Item
+                      </label>
+                      <p className="text-sm font-medium">{sub.name}</p>
+                    </div>
+                    
+                    {/* Amount */}
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Amount <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground text-sm">
+                          {currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency}
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={sub.amount}
+                          onChange={(e) => updateSubcategory(sub.id, 'amount', parseFloat(e.target.value) || 0)}
+                          className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Quantity */}
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={sub.quantity}
+                        onChange={(e) => updateSubcategory(sub.id, 'quantity', parseInt(e.target.value) || 1)}
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    onClick={() => removeSubcategory(sub.id)}
+                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                    title="Remove item"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeSubcategory(sub.id)}
-                  className="text-red-500 hover:text-red-700 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 6 6 18" />
-                    <path d="m6 6 12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-muted-foreground">Amount</label>
+                
+                {/* Notes */}
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Notes (optional)
+                  </label>
                   <input
-                    type="number"
-                    value={sub.amount}
-                    onChange={(e) => updateSubcategory(sub.id, 'amount', e.target.value)}
-                    className="w-full text-xs p-1.5 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    value={sub.notes}
+                    onChange={(e) => updateSubcategory(sub.id, 'notes', e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Additional notes..."
                   />
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Quantity</label>
-                  <input
-                    type="number"
-                    value={sub.quantity}
-                    onChange={(e) => updateSubcategory(sub.id, 'quantity', e.target.value)}
-                    className="w-full text-xs p-1.5 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="1"
-                    min="1"
-                  />
+                
+                {/* Item total */}
+                <div className="mt-2 text-right">
+                  <span className="text-sm text-muted-foreground">Item Total: </span>
+                  <span className="font-semibold text-primary">
+                    {formatCurrency(sub.amount * sub.quantity, currency)}
+                  </span>
                 </div>
               </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground">Notes</label>
-                <input
-                  type="text"
-                  value={sub.notes}
-                  onChange={(e) => updateSubcategory(sub.id, 'notes', e.target.value)}
-                  className="w-full text-xs p-1.5 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Optional notes..."
-                />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
       {/* Overall Notes */}
       <div>
-        <label className="block text-xs text-muted-foreground mb-1">Overall Notes</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-2">
+          Overall Notes (Optional)
+        </label>
         <textarea
           value={details.notes}
           onChange={(e) => setDetails(prev => ({ ...prev, notes: e.target.value }))}
-          className="w-full text-xs p-2 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-          placeholder="Additional notes about this transaction..."
-          rows="2"
+          className="w-full p-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          rows="3"
+          placeholder="Any additional notes about this transaction..."
         />
       </div>
 
-      {/* Quick Actions */}
+      {/* Summary */}
       {details.subcategories.length > 0 && (
-        <div className="flex justify-between items-center pt-2 border-t border-border">
-          <span className="text-xs text-muted-foreground">
-            {details.subcategories.length} item{details.subcategories.length !== 1 ? 's' : ''}
-          </span>
-          <div className="flex space-x-2">
+        <div className="p-4 bg-secondary/30 rounded-lg border border-border">
+          <div className="flex items-center justify-between mb-2">
+            <h5 className="text-sm font-medium text-muted-foreground">Summary</h5>
             <button
               type="button"
-              onClick={() => {
-                const total = calculateTotal();
-                navigator.clipboard.writeText(`${category} breakdown: ${formatCurrency(total, currency)}\n${details.subcategories.map(s => `• ${s.name}: ${formatCurrency(s.amount || 0, currency)}`).join('\n')}`);
-              }}
-              className="text-xs text-primary hover:underline"
+              onClick={copyToClipboard}
+              className="flex items-center gap-1 text-xs text-primary hover:underline"
+              title="Copy summary to clipboard"
             >
-              Copy Summary
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy
             </button>
+          </div>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span>Items: {details.subcategories.length}</span>
+              <span>Total Quantity: {details.subcategories.reduce((sum, sub) => sum + sub.quantity, 0)}</span>
+            </div>
+            <div className="flex justify-between font-semibold pt-2 border-t border-border">
+              <span>Grand Total:</span>
+              <span className="text-primary">{formatCurrency(details.totalAmount, currency)}</span>
+            </div>
+          </div>
+          
+          {/* Quick Actions */}
+          <div className="flex justify-end mt-3 pt-2 border-t border-border">
             <button
               type="button"
               onClick={() => setDetails(prev => ({ ...prev, subcategories: [] }))}
               className="text-xs text-red-500 hover:underline"
             >
-              Clear All
+              Clear All Items
             </button>
           </div>
+        </div>
+      )}
+
+      {details.subcategories.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <div className="text-4xl mb-3">📝</div>
+          <p className="text-lg font-medium mb-2">No items added yet</p>
+          <p className="text-sm">Click on the buttons above to add expense items for detailed tracking</p>
         </div>
       )}
     </div>

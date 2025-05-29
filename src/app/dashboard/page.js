@@ -130,14 +130,14 @@ export default function Dashboard() {
 
     return () => unsubscribe();
   }, [auth, router]);
-
-  // Filter transactions based on selected date range
+  // Filter transactions based on selected date range and active wallet
   useEffect(() => {
     if (transactions.length > 0) {
-      if (!startDate && !endDate) {
-        setFilteredTransactions(transactions);
-      } else {
-        const filtered = transactions.filter(transaction => {
+      let filtered = transactions;
+      
+      // Filter by date range
+      if (startDate || endDate) {
+        filtered = filtered.filter(transaction => {
           const transactionDate = new Date(transaction.date.seconds * 1000);
           
           if (startDate && endDate) {
@@ -150,12 +150,31 @@ export default function Dashboard() {
           
           return true;
         });
-        setFilteredTransactions(filtered);
       }
+      
+      // Filter by active wallet
+      if (activeWallet) {
+        filtered = filtered.filter(transaction => {
+          return transaction.walletId === activeWallet.id;
+        });
+      }
+      
+      setFilteredTransactions(filtered);
     } else {
       setFilteredTransactions([]);
     }
-  }, [transactions, startDate, endDate]);
+  }, [transactions, startDate, endDate, activeWallet]);
+  // Calculate current balance from filtered transactions
+  const getCurrentBalance = () => {
+    if (activeWallet) {
+      // If we have an active wallet, use the wallet's current balance
+      // since the wallet balance is already maintained correctly by Firebase operations
+      return activeWallet.balance || 0;
+    } else {
+      // Fallback to global balance if no active wallet
+      return balance;
+    }
+  };
 
   // Handle date range changes from the DateRangeFilter component
   const handleDateRangeChange = (start, end) => {
@@ -415,12 +434,13 @@ export default function Dashboard() {
       <main className="flex-1">
         {activeTab === 'home' && (
           <div className="flex flex-col items-center p-4 md:p-6 max-w-4xl mx-auto w-full">
-            {/* Balance Card */}
-            <div className="w-full bg-card rounded-xl shadow-sm overflow-hidden mb-6">
+            {/* Balance Card */}            <div className="w-full bg-card rounded-xl shadow-sm overflow-hidden mb-6">
               <div className="p-6 text-center">
-                <p className="text-sm font-medium text-muted-foreground mb-1">Current Balance ({currency})</p>
-                <p className={`text-4xl font-bold mb-4 ${balance >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                  {formatCurrency(balance, currency)}
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  {activeWallet ? `${activeWallet.name} Balance` : 'Current Balance'} ({currency})
+                </p>
+                <p className={`text-4xl font-bold mb-4 ${getCurrentBalance() >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                  {formatCurrency(getCurrentBalance(), currency)}
                 </p>
                 <div className="flex gap-2 justify-center">
                   <CurrencySelector 

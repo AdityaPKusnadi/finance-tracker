@@ -4,7 +4,16 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/solid';
 
 const ThemeToggle = () => {
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { isDarkMode, toggleTheme, isMounted } = useTheme();
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!isMounted) {
+    return (
+      <div className="p-2 rounded-full bg-secondary w-9 h-9">
+        <div className="w-5 h-5 bg-muted-foreground/20 rounded animate-pulse"></div>
+      </div>
+    );
+  }
 
   return (
     <button

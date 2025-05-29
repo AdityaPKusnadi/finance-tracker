@@ -388,10 +388,19 @@ export default function Dashboard() {
     // This will trigger a re-fetch of categories through the existing listener
     // The categories state will automatically update via the onSnapshot listener
   };
-
   return (
-    <div className="relative flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300 pb-20">
-      {/* Enhanced Header */}      <EnhancedHeader
+    <>
+      {!isHydrated ? (
+        <div className="relative flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300 pb-20">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-muted-foreground">Loading Finance Tracker...</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="relative flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300 pb-20">
+          {/* Enhanced Header */}      <EnhancedHeader
         activeWallet={activeWallet}
         wallets={wallets}
         onWalletChange={handleWalletChange}
@@ -648,9 +657,10 @@ export default function Dashboard() {
           } : null}
           isEditing={!!editTransactionId}
           wallets={wallets}
-          activeWallet={activeWallet}
-        />
+          activeWallet={activeWallet}        />
       )}
-    </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -11,9 +11,8 @@ const inter = Inter({
 
 export default function Layout({ children }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <head>
-        <link rel="icon" href="/favicon.png" type="image/png" />
+    <html lang="en" className={inter.variable}>      <head>
+        <link rel="icon" href="/logo.png" type="image/png" />
         <title>Finance Tracker</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>

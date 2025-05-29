@@ -19,6 +19,7 @@ import CurrencySelector from '@/components/CurrencySelector';
 import TravelMode from '@/components/TravelMode';
 import WalletManager from '@/components/WalletManager';
 import BudgetManager from '@/components/BudgetManager';
+import NotificationManager from '@/components/NotificationManager';
 import { notify } from '../utils/alerts';
 
 const AccountPage = ({ currency, onCurrencyChange, transactions }) => {
@@ -26,8 +27,14 @@ const AccountPage = ({ currency, onCurrencyChange, transactions }) => {
   const [showTravelMode, setShowTravelMode] = useState(false);
   const [showWalletManager, setShowWalletManager] = useState(false);
   const [showBudgetManager, setShowBudgetManager] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const auth = getAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -78,13 +85,12 @@ const AccountPage = ({ currency, onCurrencyChange, transactions }) => {
       subtitle: 'Track expenses during travel',
       icon: MapIcon,
       onClick: () => setShowTravelMode(true)
-    },
-    {
+    },    {
       id: 'notifications',
       title: 'Notifications',
       subtitle: 'Manage your notification preferences',
       icon: BellIcon,
-      onClick: () => notify('Notification settings coming soon!', 'info')
+      onClick: () => setShowNotifications(true)
     },
     {
       id: 'security',
@@ -99,8 +105,20 @@ const AccountPage = ({ currency, onCurrencyChange, transactions }) => {
       subtitle: 'Get help and contact support',
       icon: QuestionMarkCircleIcon,
       onClick: () => notify('Help & Support coming soon!', 'info')
-    }
-  ];
+    }  ];
+
+  // Prevent hydration mismatch
+  if (!isMounted) {
+    return (
+      <div className="p-4 max-w-2xl mx-auto">
+        <div className="bg-card rounded-xl shadow-sm p-6 mb-6">
+          <div className="text-center">
+            <p className="text-muted-foreground">Loading account settings...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
@@ -221,13 +239,37 @@ const AccountPage = ({ currency, onCurrencyChange, transactions }) => {
         currency={currency}
         transactions={transactions}
       />
-      
-      <BudgetManager 
+        <BudgetManager 
         isOpen={showBudgetManager}
         onClose={() => setShowBudgetManager(false)}
         currency={currency}
         transactions={transactions}
       />
+
+      {/* Notification Settings Modal */}
+      {showNotifications && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-background rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Notification Settings</h2>
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="p-2 hover:bg-secondary/50 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <NotificationManager 
+                userId={user?.uid}
+                userEmail={user?.email}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

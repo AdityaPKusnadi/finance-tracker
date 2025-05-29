@@ -10,9 +10,16 @@ export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
+  // Client-side hydration check
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Listen for auth state changes
   useEffect(() => {
+    if (!isMounted) return;
+    
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -25,7 +32,7 @@ export const ThemeProvider = ({ children }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isMounted]);
 
   // Load theme from Firebase for authenticated users
   const loadUserTheme = async (uid) => {
@@ -40,9 +47,10 @@ export const ThemeProvider = ({ children }) => {
       setIsLoading(false);
     }
   };
-
   // Load theme from localStorage for non-authenticated users
   const loadLocalTheme = () => {
+    if (typeof window === 'undefined') return;
+    
     try {
       const savedTheme = localStorage.getItem('theme');
       const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -88,11 +96,11 @@ export const ThemeProvider = ({ children }) => {
       }
     }
   };
-
   const value = {
     isDarkMode,
     toggleTheme,
-    isLoading
+    isLoading,
+    isMounted
   };
 
   return (

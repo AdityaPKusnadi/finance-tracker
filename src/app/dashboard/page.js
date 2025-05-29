@@ -25,6 +25,8 @@ import CurrencyConverter from '@/components/CurrencyConverter';
 import DetailedTransactionInput from '@/components/DetailedTransactionInput';
 import EnhancedTransactionModal from '@/components/EnhancedTransactionModal';
 import { formatCurrency } from '@/utils/currency';
+import { notify } from '../../utils/alerts';
+import Swal from 'sweetalert2';
 
 export default function Dashboard() {
   const [isHydrated, setIsHydrated] = useState(false);
@@ -242,10 +244,14 @@ export default function Dashboard() {
     
     try {
       const updatedBalance = await deleteTransaction(userId, transaction.id, transaction.amount, transaction.type);
-      setBalance(updatedBalance);
-    } catch (error) {
+      setBalance(updatedBalance);    } catch (error) {
       console.error('Failed to delete transaction:', error);
-      alert('Failed to delete transaction. Please try again.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to delete transaction. Please try again.',
+        confirmButtonColor: '#3B82F6'
+      });
     }
   };
   const closeModal = () => {
@@ -271,6 +277,20 @@ export default function Dashboard() {
       setIsCategoryModalOpen(false);
     } catch (error) {
       console.error('Failed to add category:', error);
+    }
+  };
+
+  const handleAddCategoryFromSelector = async (newCategory) => {
+    if (!userId) return;
+
+    try {
+      await addDoc(collection(db, 'users', userId, 'categories'), {
+        name: newCategory.name,
+        type: newCategory.type,
+      });
+    } catch (error) {
+      console.error('Failed to add category:', error);
+      notify('Failed to add category', 'error');
     }
   };
 
@@ -572,10 +592,10 @@ export default function Dashboard() {
               totalAmount: 0,
               notes: ''
             });
-          }}
-          onSubmit={handleEnhancedTransactionSubmit}
+          }}          onSubmit={handleEnhancedTransactionSubmit}
           currency={currency}
           categories={categories}
+          onAddCategory={handleAddCategoryFromSelector}
           editTransaction={editTransactionId ? {
             id: editTransactionId,
             type: transactionType,

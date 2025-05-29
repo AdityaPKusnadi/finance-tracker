@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { registerWithEmailAndPassword, signInWithGoogle } from '../firebase';
+import { showError } from '../../utils/alerts';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -24,10 +25,9 @@ export default function Register() {
     try {
         const user = await signInWithGoogle();
         console.log('User after Google sign-up:', user);
-        router.push('/dashboard');
-    } catch (error) {
+        router.push('/dashboard');    } catch (error) {
         console.error('Google sign-up error:', error.message);
-        alert(`Google sign-up failed: ${error.message}`);
+        showError('Google Sign-up Failed', error.message);
     }
 };
 

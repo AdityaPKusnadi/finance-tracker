@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/utils/currency';
+import { notify } from '../utils/alerts';
 import Calculator from './Calculator';
 import CurrencyConverter from './CurrencyConverter';
 import DetailedTransactionInput from './DetailedTransactionInput';
@@ -22,6 +23,7 @@ const EnhancedTransactionModal = ({
   onSubmit,
   currency,
   categories,
+  onAddCategory,
   editTransaction = null,
   isEditing = false
 }) => {
@@ -82,18 +84,17 @@ const EnhancedTransactionModal = ({
       });
     }
   }, [isEditing, editTransaction, isOpen]);
-
   const handleSubmit = (e) => {
     e.preventDefault();
     
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
-      alert('Please enter a valid amount');
+      notify('Please enter a valid amount', 'warning');
       return;
     }
 
     if (!formData.category) {
-      alert('Please select a category');
+      notify('Please select a category', 'warning');
       return;
     }
 
@@ -129,13 +130,14 @@ const EnhancedTransactionModal = ({
     // Automatically close calculator after calculation
     setShowCalculator(false);
   };
-
-  const handleConverterResult = (converted) => {
+  const handleConverterResult = (convertData) => {
+    // convertData is an object with convertedAmount property
+    const amount = convertData.convertedAmount || convertData;
     setFormData(prev => ({
       ...prev,
-      amount: converted.toString()
+      amount: amount.toString()
     }));
-    setConvertedAmount(converted.toString());
+    setConvertedAmount(amount.toString());
   };
 
   const handleQuickAmount = (amount) => {
@@ -348,12 +350,12 @@ const EnhancedTransactionModal = ({
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-3">
                   Category
-                </label>
-                <CategorySelector
+                </label>                <CategorySelector
                   categories={categories}
                   transactionType={formData.type}
                   value={formData.category}
                   onChange={(category) => setFormData(prev => ({ ...prev, category }))}
+                  onAddCategory={onAddCategory}
                 />
               </div>
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { XCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { XCircleIcon, MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { notify } from '../utils/alerts';
 
 // Import icons
 import {
@@ -30,12 +31,38 @@ import {
   CheckBadgeIcon
 } from '@heroicons/react/24/solid';
 
-const CategorySelector = ({ categories, value, onChange, transactionType, onAddCategory }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const CategorySelector = ({ categories, value, onChange, transactionType, onAddCategory }) => {  const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [showAddNew, setShowAddNew] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const dropdownRef = useRef(null);
+
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim()) {
+      notify('Please enter a category name', 'warning');
+      return;
+    }
+
+    if (categories.some(cat => cat.name.toLowerCase() === newCategoryName.toLowerCase())) {
+      notify('Category already exists', 'warning');
+      return;
+    }
+
+    if (onAddCategory) {
+      const newCategory = {
+        id: Date.now().toString(),
+        name: newCategoryName.trim(),
+        type: transactionType,
+        icon: getCategoryIcon(newCategoryName.trim())
+      };
+      onAddCategory(newCategory);
+      onChange(newCategoryName.trim());
+      setNewCategoryName('');
+      setShowAddNew(false);
+      setIsOpen(false);
+      notify(`Category "${newCategoryName.trim()}" added successfully`, 'success');
+    }
+  };
   
   // Filter categories by type and search term
   const filteredCategories = categories
@@ -216,8 +243,7 @@ const CategorySelector = ({ categories, value, onChange, transactionType, onAddC
               )}
             </div>
           </div>
-          
-          {/* Categories list */}
+            {/* Categories list */}
           <div className="max-h-60 overflow-y-auto">
             {filteredCategories.length > 0 ? (
               filteredCategories.map((cat) => (
@@ -239,7 +265,71 @@ const CategorySelector = ({ categories, value, onChange, transactionType, onAddC
             ) : (
               <div className="p-3 text-center text-muted-foreground">
                 No categories found
+                {search && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => {
+                        setNewCategoryName(search);
+                        setShowAddNew(true);
+                      }}
+                      className="text-primary hover:text-primary/80 text-sm underline"
+                    >
+                      Create "{search}" category
+                    </button>
+                  </div>
+                )}
               </div>
+            )}
+            
+            {/* Add new category section */}
+            {onAddCategory && (
+              <>
+                {filteredCategories.length > 0 && (
+                  <div className="border-t border-border" />
+                )}
+                {showAddNew ? (
+                  <div className="p-3 bg-secondary/30">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="Category name"
+                        className="flex-1 px-2 py-1 text-sm rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddCategory();
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleAddCategory}
+                        className="bg-primary text-primary-foreground px-3 py-1 rounded text-sm hover:bg-primary/90"
+                      >
+                        Add
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAddNew(false);
+                          setNewCategoryName('');
+                        }}
+                        className="text-muted-foreground hover:text-foreground px-2 py-1 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => setShowAddNew(true)}
+                    className="flex items-center p-3 cursor-pointer hover:bg-secondary/50 text-primary"
+                  >
+                    <PlusIcon className="h-5 w-5 mr-2" />
+                    <span>Add new category</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
           

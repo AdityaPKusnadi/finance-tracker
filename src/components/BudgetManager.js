@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/utils/currency';
+import Swal from 'sweetalert2';
 
 const BudgetManager = ({ isOpen, onClose, currency, transactions = [] }) => {
   const [budgets, setBudgets] = useState([]);
@@ -62,10 +63,14 @@ const BudgetManager = ({ isOpen, onClose, currency, transactions = [] }) => {
 
     return { spent, remaining, percentage: Math.min(percentage, 100) };
   };
-
   const handleAddBudget = () => {
     if (!budgetForm.name || !budgetForm.amount) {
-      alert('Please fill in all required fields');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Missing Information',
+        text: 'Please fill in all required fields',
+        confirmButtonColor: '#3B82F6'
+      });
       return;
     }
 

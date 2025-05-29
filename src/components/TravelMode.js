@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { MapIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/utils/currency';
+import Swal from 'sweetalert2';
 
 const TravelMode = ({ isOpen, onClose, currency, onAddExpense }) => {
   const [travelBudget, setTravelBudget] = useState('');
@@ -27,10 +28,14 @@ const TravelMode = ({ isOpen, onClose, currency, onAddExpense }) => {
       setRemainingBudget(parseFloat(travelBudget) - totalExpenses);
     }
   }, [travelBudget, travelExpenses]);
-
   const handleStartTravel = () => {
     if (!travelBudget || parseFloat(travelBudget) <= 0) {
-      alert('Please enter a valid travel budget');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Invalid Budget',
+        text: 'Please enter a valid travel budget',
+        confirmButtonColor: '#3B82F6'
+      });
       return;
     }
 

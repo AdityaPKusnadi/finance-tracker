@@ -19,6 +19,7 @@ import CurrencySelector from '@/components/CurrencySelector';
 import TravelMode from '@/components/TravelMode';
 import WalletManager from '@/components/WalletManager';
 import BudgetManager from '@/components/BudgetManager';
+import { notify } from '../utils/alerts';
 
 const AccountPage = ({ currency, onCurrencyChange, transactions }) => {
   const [user, setUser] = useState(null);
@@ -55,7 +56,7 @@ const AccountPage = ({ currency, onCurrencyChange, transactions }) => {
       title: 'Profile Settings',
       subtitle: 'Manage your account information',
       icon: UserIcon,
-      onClick: () => alert('Profile settings coming soon!')
+      onClick: () => notify('Profile settings coming soon!', 'info')
     },
     {
       id: 'wallets',
@@ -83,21 +84,21 @@ const AccountPage = ({ currency, onCurrencyChange, transactions }) => {
       title: 'Notifications',
       subtitle: 'Manage your notification preferences',
       icon: BellIcon,
-      onClick: () => alert('Notification settings coming soon!')
+      onClick: () => notify('Notification settings coming soon!', 'info')
     },
     {
       id: 'security',
       title: 'Security & Privacy',
       subtitle: 'Manage your account security',
       icon: ShieldCheckIcon,
-      onClick: () => alert('Security settings coming soon!')
+      onClick: () => notify('Security settings coming soon!', 'info')
     },
     {
       id: 'help',
       title: 'Help & Support',
       subtitle: 'Get help and contact support',
       icon: QuestionMarkCircleIcon,
-      onClick: () => alert('Help & Support coming soon!')
+      onClick: () => notify('Help & Support coming soon!', 'info')
     }
   ];
 

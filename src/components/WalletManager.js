@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PlusIcon, TrashIcon, PencilIcon, WalletIcon, CreditCardIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/utils/currency';
+import { notify, showDeleteConfirmation } from '../utils/alerts';
 
 const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletChange }) => {
   const [wallets, setWallets] = useState([]);
@@ -58,10 +59,9 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
       return transaction.type === 'incoming' ? sum + transaction.amount : sum - transaction.amount;
     }, 0);
   };
-
   const handleAddWallet = () => {
     if (!walletForm.name) {
-      alert('Please enter a wallet name');
+      notify('Please enter a wallet name', 'warning');
       return;
     }
 
@@ -104,15 +104,16 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
     setIsAddingWallet(false);
     setEditingWallet(null);
   };
-
-  const handleDeleteWallet = (walletId) => {
+  const handleDeleteWallet = async (walletId) => {
     if (walletId === 'default') {
-      alert('Cannot delete the default wallet');
+      notify('Cannot delete the default wallet', 'warning');
       return;
     }
     
-    if (confirm('Are you sure you want to delete this wallet? All associated transactions will be moved to the main wallet.')) {
+    const result = await showDeleteConfirmation('this wallet');
+    if (result.isConfirmed) {
       setWallets(wallets.filter(wallet => wallet.id !== walletId));
+      notify('Wallet deleted successfully. Associated transactions moved to main wallet.', 'success');
     }
   };
 

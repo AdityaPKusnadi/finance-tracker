@@ -26,12 +26,13 @@ const EnhancedHeader = ({
     <header className="sticky top-0 z-30 w-full border-b border-border bg-card/95 backdrop-blur-md">
       {/* Main Header */}
       <div className="px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* Left: App Title */}
+        <div className="flex items-center justify-between">          {/* Left: App Logo */}
           <div className="flex items-center gap-3">
-            <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-              Finance Tracker
-            </h1>
+            <img 
+              src="/logo.png" 
+              alt="Finance Tracker" 
+              className="h-8 w-auto md:h-10"
+            />
           </div>
 
           {/* Center: Desktop Controls */}

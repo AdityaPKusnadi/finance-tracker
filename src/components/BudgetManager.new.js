@@ -7,7 +7,7 @@ import { getUserBudgets, addBudget, updateBudget, deleteBudget } from '../app/fi
 import { getAuth } from 'firebase/auth';
 import Swal from 'sweetalert2';
 
-const BudgetManager = ({ isOpen, onClose, currency, transactions = [], categories = [] }) => {
+const BudgetManager = ({ isOpen, onClose, currency, transactions = [] }) => {
   const [budgets, setBudgets] = useState([]);
   const [isAddingBudget, setIsAddingBudget] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
@@ -18,7 +18,9 @@ const BudgetManager = ({ isOpen, onClose, currency, transactions = [], categorie
     amount: '',
     category: '',
     period: 'monthly' // monthly, weekly, yearly
-  });  // Get current user
+  });
+
+  // Get current user
   useEffect(() => {
     const auth = getAuth();
     if (auth.currentUser) {
@@ -32,37 +34,6 @@ const BudgetManager = ({ isOpen, onClose, currency, transactions = [], categorie
       loadBudgets();
     }
   }, [userId, isOpen]);
-
-  // Helper function to get category icon
-  const getCategoryIcon = (iconId) => {
-    const categoryIcons = {
-      'tag': '🏷️',
-      'food': '🍔',
-      'transport': '🚗',
-      'shopping': '🛒',
-      'entertainment': '🎬',
-      'health': '⚕️',
-      'education': '📚',
-      'utilities': '💡',
-      'rent': '🏠',
-      'salary': '💰',
-      'investment': '📈',
-      'gift': '🎁'
-    };
-    return categoryIcons[iconId] || '🏷️';
-  };
-
-  // Helper function to get category details
-  const getCategoryDetails = (categoryName) => {
-    const category = categories.find(cat => cat.name === categoryName);
-    return category ? {
-      icon: getCategoryIcon(category.icon),
-      color: category.color || '#3B82F6'
-    } : {
-      icon: '🏷️',
-      color: '#3B82F6'
-    };
-  };
 
   const loadBudgets = async () => {
     if (!userId) return;
@@ -78,7 +49,8 @@ const BudgetManager = ({ isOpen, onClose, currency, transactions = [], categorie
         title: 'Error',
         text: 'Failed to load budgets. Please try again.',
         confirmButtonColor: '#3B82F6'
-      });    } finally {
+      });
+    } finally {
       setLoading(false);
     }
   };
@@ -318,26 +290,19 @@ const BudgetManager = ({ isOpen, onClose, currency, transactions = [], categorie
                       disabled={loading}
                     />
                   </div>
-                </div>                <div>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-2">
                     Category (Optional)
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={budgetForm.category}
                     onChange={(e) => setBudgetForm({...budgetForm, category: e.target.value})}
                     className="w-full p-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="e.g., Food, Entertainment"
                     disabled={loading}
-                  >
-                    <option value="">All Categories</option>
-                    {categories
-                      .filter(cat => cat.type === 'outgoing')
-                      .map(category => (
-                        <option key={category.id} value={category.name}>
-                          {getCategoryIcon(category.icon)} {category.name}
-                        </option>
-                      ))
-                    }
-                  </select>
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-2">
@@ -389,25 +354,17 @@ const BudgetManager = ({ isOpen, onClose, currency, transactions = [], categorie
                 <p>No budgets created yet</p>
                 <p className="text-sm">Create your first budget to start tracking</p>
               </div>
-            ) : (              budgets.map((budget) => {
+            ) : (
+              budgets.map((budget) => {
                 const progress = calculateBudgetProgress(budget);
-                const categoryDetails = getCategoryDetails(budget.category);
                 return (
                   <div key={budget.id} className="bg-secondary/30 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="p-2 rounded-lg text-white text-lg"
-                          style={{ backgroundColor: categoryDetails.color }}
-                        >
-                          {categoryDetails.icon}
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{budget.name}</h4>
-                          <p className="text-sm text-muted-foreground capitalize">
-                            {budget.period} {budget.category && `• ${budget.category}`}
-                          </p>
-                        </div>
+                      <div>
+                        <h4 className="font-medium">{budget.name}</h4>
+                        <p className="text-sm text-muted-foreground capitalize">
+                          {budget.period} {budget.category && `• ${budget.category}`}
+                        </p>
                       </div>
                       <div className="flex gap-1">
                         <button

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, addDoc, collection, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, addDoc, collection, deleteDoc, query, orderBy, getDocs } from 'firebase/firestore';
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -151,6 +151,145 @@ export const signInWithGoogle = async () => {
     }
     throw error;
   }
+};
+
+// User Settings Functions
+export const getUserSettings = async (userId) => {
+  const userDocRef = doc(db, 'users', userId);
+  const userDoc = await getDoc(userDocRef);
+  
+  if (userDoc.exists()) {
+    const data = userDoc.data();
+    return {
+      currency: data.currency || 'USD',
+      theme: data.theme || 'light',
+      travelMode: data.travelMode || false,
+      language: data.language || 'en'
+    };
+  } else {
+    // Initialize with default settings
+    const defaultSettings = {
+      currency: 'USD',
+      theme: 'light',
+      travelMode: false,
+      language: 'en',
+      balance: 0
+    };
+    await setDoc(userDocRef, defaultSettings);
+    return defaultSettings;
+  }
+};
+
+export const updateUserSettings = async (userId, settings) => {
+  const userDocRef = doc(db, 'users', userId);
+  await updateDoc(userDocRef, settings);
+};
+
+// Wallet Functions
+export const getUserWallets = async (userId) => {
+  const walletsQuery = query(
+    collection(db, 'users', userId, 'wallets'),
+    orderBy('createdAt', 'asc')
+  );
+  const snapshot = await getDocs(walletsQuery);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const addWallet = async (userId, walletData) => {
+  const walletsCollection = collection(db, 'users', userId, 'wallets');
+  const walletWithTimestamp = {
+    ...walletData,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+  
+  const docRef = await addDoc(walletsCollection, walletWithTimestamp);
+  return { id: docRef.id, ...walletWithTimestamp };
+};
+
+export const updateWallet = async (userId, walletId, walletData) => {
+  const walletDocRef = doc(db, 'users', userId, 'wallets', walletId);
+  const updateData = {
+    ...walletData,
+    updatedAt: new Date()
+  };
+  await updateDoc(walletDocRef, updateData);
+};
+
+export const deleteWallet = async (userId, walletId) => {
+  const walletDocRef = doc(db, 'users', userId, 'wallets', walletId);
+  await deleteDoc(walletDocRef);
+};
+
+// Budget Functions
+export const getUserBudgets = async (userId) => {
+  const budgetsQuery = query(
+    collection(db, 'users', userId, 'budgets'),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(budgetsQuery);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const addBudget = async (userId, budgetData) => {
+  const budgetsCollection = collection(db, 'users', userId, 'budgets');
+  const budgetWithTimestamp = {
+    ...budgetData,
+    amount: parseFloat(budgetData.amount),
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+  
+  const docRef = await addDoc(budgetsCollection, budgetWithTimestamp);
+  return { id: docRef.id, ...budgetWithTimestamp };
+};
+
+export const updateBudget = async (userId, budgetId, budgetData) => {
+  const budgetDocRef = doc(db, 'users', userId, 'budgets', budgetId);
+  const updateData = {
+    ...budgetData,
+    amount: parseFloat(budgetData.amount),
+    updatedAt: new Date()
+  };
+  await updateDoc(budgetDocRef, updateData);
+};
+
+export const deleteBudget = async (userId, budgetId) => {
+  const budgetDocRef = doc(db, 'users', userId, 'budgets', budgetId);
+  await deleteDoc(budgetDocRef);
+};
+
+// Enhanced Category Functions
+export const addCategory = async (userId, categoryData) => {
+  const categoriesCollection = collection(db, 'users', userId, 'categories');
+  const categoryWithTimestamp = {
+    ...categoryData,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+  
+  const docRef = await addDoc(categoriesCollection, categoryWithTimestamp);
+  return { id: docRef.id, ...categoryWithTimestamp };
+};
+
+export const updateCategory = async (userId, categoryId, categoryData) => {
+  const categoryDocRef = doc(db, 'users', userId, 'categories', categoryId);
+  const updateData = {
+    ...categoryData,
+    updatedAt: new Date()
+  };
+  await updateDoc(categoryDocRef, updateData);
+};
+
+export const deleteCategory = async (userId, categoryId) => {
+  const categoryDocRef = doc(db, 'users', userId, 'categories', categoryId);
+  await deleteDoc(categoryDocRef);
 };
 
 export { auth, db };

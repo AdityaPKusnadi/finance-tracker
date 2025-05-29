@@ -31,7 +31,8 @@ import {
   CheckBadgeIcon
 } from '@heroicons/react/24/solid';
 
-const CategorySelector = ({ categories, value, onChange, transactionType, onAddCategory }) => {  const [isOpen, setIsOpen] = useState(false);
+const CategorySelector = ({ categories, value, onChange, transactionType, onAddCategory }) => {
+  const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [showAddNew, setShowAddNew] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -68,43 +69,45 @@ const CategorySelector = ({ categories, value, onChange, transactionType, onAddC
   const filteredCategories = categories
     .filter(cat => cat.type === transactionType)
     .filter(cat => cat.name.toLowerCase().includes(search.toLowerCase()));
-  
+    // Helper function to get category icon emoji from CategoryManager
+  const getCategoryIconEmoji = (iconId) => {
+    const categoryIcons = {
+      'tag': '🏷️',
+      'food': '🍔',
+      'transport': '🚗',
+      'shopping': '🛒',
+      'entertainment': '🎬',
+      'health': '⚕️',
+      'education': '📚',
+      'utilities': '💡',
+      'rent': '🏠',
+      'salary': '💰',
+      'investment': '📈',
+      'gift': '🎁'
+    };
+    return categoryIcons[iconId] || '🏷️';
+  };
+
   // Get the current selected category
   const selectedCategory = categories.find(cat => cat.name === value);
   
-  // Get a background color for the category based on its type
-  const getCategoryBackground = () => {
-    if (!value) return 'bg-secondary/50';
-    return transactionType === 'incoming' 
-      ? 'bg-green-100 dark:bg-green-900/30' 
-      : 'bg-red-100 dark:bg-red-900/30';
-  };
-
-  // Get border color for category
-  const getCategoryBorderColor = () => {
-    if (!value) return 'border-transparent';
-    return transactionType === 'incoming'
-      ? 'border-green-500 dark:border-green-700'
-      : 'border-red-500 dark:border-red-700';
-  };
-  
-  // Get text color for category
-  const getCategoryTextColor = () => {
-    if (!value) return '';
-    return transactionType === 'incoming'
-      ? 'text-green-700 dark:text-green-400'
-      : 'text-red-700 dark:text-red-400';
-  };
-
-  // Get color for icon background
-  const getIconBackground = () => {
-    return transactionType === 'incoming'
-      ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400'
-      : 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400';
-  };
-
-  // Category icons with components based on category name
+  // Enhanced category icon that uses CategoryManager data
   const getCategoryIcon = (categoryName) => {
+    const category = categories.find(cat => cat.name === categoryName);
+    
+    if (category && category.icon) {
+      // Use emoji from CategoryManager
+      return (
+        <div 
+          className="p-1.5 rounded-full text-white text-sm"
+          style={{ backgroundColor: category.color || '#3B82F6' }}
+        >
+          {getCategoryIconEmoji(category.icon)}
+        </div>
+      );
+    }
+    
+    // Fallback to old icon system
     const lowerName = categoryName?.toLowerCase() || '';
     const IconComponent = getCategoryIconComponent(lowerName);
     
@@ -113,9 +116,55 @@ const CategorySelector = ({ categories, value, onChange, transactionType, onAddC
         <IconComponent className="h-4 w-4" />
       </div>
     );
+  };  // Get a background color for the category based on its type and CategoryManager data
+  const getCategoryBackground = () => {
+    if (!value) return 'bg-secondary/50';
+    
+    const category = categories.find(cat => cat.name === value);
+    if (category && category.color) {
+      return 'bg-card border-2';
+    }
+    
+    return transactionType === 'incoming' 
+      ? 'bg-green-100 dark:bg-green-900/30' 
+      : 'bg-red-100 dark:bg-red-900/30';
+  };
+
+  // Get border color for category
+  const getCategoryBorderColor = () => {
+    if (!value) return 'border-transparent';
+    
+    const category = categories.find(cat => cat.name === value);
+    if (category && category.color) {
+      return `border-[${category.color}]`;
+    }
+    
+    return transactionType === 'incoming'
+      ? 'border-green-500 dark:border-green-700'
+      : 'border-red-500 dark:border-red-700';
   };
   
-  // Get icon component based on category name
+  // Get text color for category
+  const getCategoryTextColor = () => {
+    if (!value) return '';
+    
+    const category = categories.find(cat => cat.name === value);
+    if (category && category.color) {
+      return 'text-foreground font-medium';
+    }
+    
+    return transactionType === 'incoming'
+      ? 'text-green-700 dark:text-green-400'
+      : 'text-red-700 dark:text-red-400';
+  };
+  // Get color for icon background (fallback)
+  const getIconBackground = () => {
+    return transactionType === 'incoming'
+      ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400'
+      : 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400';
+  };
+
+  // Get category icon component based on name
   const getCategoryIconComponent = (lowerName) => {
     if (transactionType === 'incoming') {
       if (lowerName.includes('salary') || lowerName.includes('wage') || lowerName.includes('paycheck')) 

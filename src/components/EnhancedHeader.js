@@ -6,7 +6,8 @@ import {
   MapIcon, 
   Cog6ToothIcon,
   ChevronDownIcon,
-  EllipsisVerticalIcon
+  EllipsisVerticalIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
 
@@ -17,7 +18,8 @@ const EnhancedHeader = ({
   isTravelMode, 
   onToggleTravelMode,
   onOpenSettings,
-  onOpenWalletManager 
+  onOpenWalletManager,
+  onOpenCategoryManager
 }) => {
   const [isWalletDropdownOpen, setIsWalletDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -107,10 +109,15 @@ const EnhancedHeader = ({
                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
               )}
             </button>
-          </div>
-
-          {/* Right: Desktop Actions */}
+          </div>          {/* Right: Desktop Actions */}
           <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={onOpenCategoryManager}
+              className="p-2 rounded-xl hover:bg-secondary/80 transition-colors border border-transparent hover:border-border/50"
+              title="Manage Categories"
+            >
+              <TagIcon className="h-5 w-5" />
+            </button>
             <button
               onClick={onOpenSettings}
               className="p-2 rounded-xl hover:bg-secondary/80 transition-colors border border-transparent hover:border-border/50"
@@ -221,20 +228,30 @@ const EnhancedHeader = ({
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                 )}
               </button>
-            </div>
-
-            {/* Mobile Actions Section */}
+            </div>            {/* Mobile Actions Section */}
             <div className="flex items-center justify-between pt-2 border-t border-border/30">
-              <button
-                onClick={() => {
-                  onOpenSettings();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-secondary transition-colors text-sm"
-              >
-                <Cog6ToothIcon className="h-4 w-4" />
-                <span>Settings</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    onOpenCategoryManager();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-secondary transition-colors text-sm"
+                >
+                  <TagIcon className="h-4 w-4" />
+                  <span>Categories</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onOpenSettings();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-secondary transition-colors text-sm"
+                >
+                  <Cog6ToothIcon className="h-4 w-4" />
+                  <span>Settings</span>
+                </button>
+              </div>
               <ThemeToggle />
             </div>
           </div>

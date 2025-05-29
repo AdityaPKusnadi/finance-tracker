@@ -1,9 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlusIcon, TrashIcon, PencilIcon, WalletIcon, CreditCardIcon, BanknotesIcon } from '@heroicons/react/24/outline';
-import { formatCurrency } from '@/utils/currency';
-import { notify, showDeleteConfirmation } from '../utils/alerts';
+import { 
+  PlusIcon, 
+  PencilIcon, 
+  TrashIcon, 
+  BanknotesIcon, 
+  WalletIcon, 
+  CreditCardIcon,
+  CheckIcon 
+} from '@heroicons/react/24/outline';
+import { formatCurrency } from '../utils/currency';
 import { getUserWallets, addWallet, updateWallet, deleteWallet } from '../app/firebase';
 import { getAuth } from 'firebase/auth';
 import Swal from 'sweetalert2';
@@ -32,6 +39,7 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
     '#3B82F6', '#EF4444', '#10B981', '#F59E0B',
     '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'
   ];
+
   // Get current user
   useEffect(() => {
     const auth = getAuth();
@@ -53,8 +61,9 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
     setLoading(true);
     try {
       const walletsData = await getUserWallets(userId);
+      
+      // If no wallets exist, create a default one
       if (walletsData.length === 0) {
-        // Create default wallet if none exist
         const defaultWallet = {
           name: 'Main Wallet',
           type: 'cash',
@@ -62,8 +71,8 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
           color: '#3B82F6',
           isDefault: true
         };
-        const createdWallet = await addWallet(userId, defaultWallet);
-        setWallets([createdWallet]);
+        const newWallet = await addWallet(userId, defaultWallet);
+        setWallets([newWallet]);
       } else {
         setWallets(walletsData);
       }
@@ -79,10 +88,13 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
       setLoading(false);
     }
   };
+
   const calculateWalletBalance = (walletId) => {
-    const walletTransactions = transactions.filter(t => t.walletId === walletId || (!t.walletId && walletId === 'default'));
-    return walletTransactions.reduce((sum, transaction) => {
-      return transaction.type === 'incoming' ? sum + transaction.amount : sum - transaction.amount;
+    const walletTransactions = transactions.filter(t => t.walletId === walletId);
+    return walletTransactions.reduce((balance, transaction) => {
+      return transaction.type === 'incoming' 
+        ? balance + transaction.amount 
+        : balance - transaction.amount;
     }, 0);
   };
 
@@ -91,7 +103,7 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
       Swal.fire({
         icon: 'warning',
         title: 'Missing Information',
-        text: 'Please enter a wallet name',
+        text: 'Please fill in all required fields',
         confirmButtonColor: '#3B82F6'
       });
       return;
@@ -100,10 +112,8 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
     setLoading(true);
     try {
       const newWalletData = {
-        name: walletForm.name,
-        type: walletForm.type,
+        ...walletForm,
         balance: parseFloat(walletForm.balance) || 0,
-        color: walletForm.color,
         isDefault: wallets.length === 0
       };
 
@@ -111,7 +121,7 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
       setWallets([...wallets, newWallet]);
       setWalletForm({ name: '', type: 'cash', balance: '', color: '#3B82F6' });
       setIsAddingWallet(false);
-
+      
       Swal.fire({
         icon: 'success',
         title: 'Success',
@@ -132,6 +142,7 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
       setLoading(false);
     }
   };
+
   const handleEditWallet = (wallet) => {
     setEditingWallet(wallet.id);
     setWalletForm({
@@ -149,10 +160,8 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
     setLoading(true);
     try {
       const updateData = {
-        name: walletForm.name,
-        type: walletForm.type,
-        balance: parseFloat(walletForm.balance) || 0,
-        color: walletForm.color
+        ...walletForm,
+        balance: parseFloat(walletForm.balance) || 0
       };
 
       await updateWallet(userId, editingWallet, updateData);
@@ -164,7 +173,7 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
       setWalletForm({ name: '', type: 'cash', balance: '', color: '#3B82F6' });
       setIsAddingWallet(false);
       setEditingWallet(null);
-
+      
       Swal.fire({
         icon: 'success',
         title: 'Success',
@@ -184,20 +193,24 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
     } finally {
       setLoading(false);
     }
-  };  const handleDeleteWallet = async (walletId) => {
-    if (walletId === 'default' || wallets.find(w => w.id === walletId)?.isDefault) {
+  };
+
+  const handleDeleteWallet = async (walletId) => {
+    const wallet = wallets.find(w => w.id === walletId);
+    
+    if (wallet?.isDefault) {
       Swal.fire({
         icon: 'warning',
         title: 'Cannot Delete',
-        text: 'Cannot delete the default wallet',
+        text: 'You cannot delete the default wallet. Set another wallet as default first.',
         confirmButtonColor: '#3B82F6'
       });
       return;
     }
-    
+
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: 'This will permanently delete this wallet. Associated transactions will be moved to the main wallet.',
+      text: 'This will permanently delete this wallet and all its transaction data.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Yes, delete it!',
@@ -215,7 +228,7 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
         Swal.fire({
           icon: 'success',
           title: 'Deleted',
-          text: 'Wallet deleted successfully. Associated transactions moved to main wallet.',
+          text: 'Wallet has been deleted successfully.',
           confirmButtonColor: '#3B82F6',
           timer: 2000,
           showConfirmButton: false
@@ -233,29 +246,34 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
       }
     }
   };
+
   const handleSetDefault = async (walletId) => {
     if (!userId) return;
 
     setLoading(true);
     try {
-      // Update all wallets to set new default
-      const updatedWallets = wallets.map(wallet => ({
+      // Update all wallets to remove default status
+      const updatePromises = wallets.map(wallet => {
+        if (wallet.id === walletId) {
+          return updateWallet(userId, wallet.id, { ...wallet, isDefault: true });
+        } else if (wallet.isDefault) {
+          return updateWallet(userId, wallet.id, { ...wallet, isDefault: false });
+        }
+        return Promise.resolve();
+      });
+
+      await Promise.all(updatePromises);
+
+      // Update local state
+      setWallets(wallets.map(wallet => ({
         ...wallet,
         isDefault: wallet.id === walletId
-      }));
+      })));
 
-      // Update each wallet in Firebase
-      await Promise.all(
-        updatedWallets.map(wallet => 
-          updateWallet(userId, wallet.id, { isDefault: wallet.isDefault })
-        )
-      );
-
-      setWallets(updatedWallets);
-      
-      if (onWalletChange) {
-        const newDefaultWallet = updatedWallets.find(w => w.id === walletId);
-        onWalletChange(newDefaultWallet);
+      // Notify parent component
+      const selectedWallet = wallets.find(w => w.id === walletId);
+      if (selectedWallet && onWalletChange) {
+        onWalletChange({ ...selectedWallet, isDefault: true });
       }
 
       Swal.fire({
@@ -292,7 +310,8 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold">Wallet Manager</h3>
-            <div className="flex gap-2">              <button
+            <div className="flex gap-2">
+              <button
                 onClick={() => setIsAddingWallet(true)}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground p-2 rounded-lg transition-colors"
                 disabled={loading}
@@ -322,7 +341,8 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
                   <input
                     type="text"
                     value={walletForm.name}
-                    onChange={(e) => setWalletForm({...walletForm, name: e.target.value})}                    className="w-full p-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    onChange={(e) => setWalletForm({...walletForm, name: e.target.value})}
+                    className="w-full p-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="e.g., My Cash Wallet"
                     disabled={loading}
                   />
@@ -330,7 +350,8 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-2">
                     Type
-                  </label>                  <select
+                  </label>
+                  <select
                     value={walletForm.type}
                     onChange={(e) => setWalletForm({...walletForm, type: e.target.value})}
                     className="w-full p-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -352,7 +373,8 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
                     <input
                       type="number"
                       value={walletForm.balance}
-                      onChange={(e) => setWalletForm({...walletForm, balance: e.target.value})}                      className="w-full p-3 pl-10 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      onChange={(e) => setWalletForm({...walletForm, balance: e.target.value})}
+                      className="w-full p-3 pl-10 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="0.00"
                       step="0.01"
                       disabled={loading}
@@ -363,19 +385,24 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
                   <label className="block text-sm font-medium text-muted-foreground mb-2">
                     Color
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {colors.map(color => (
                       <button
                         key={color}
+                        type="button"
                         onClick={() => setWalletForm({...walletForm, color})}
-                        className={`w-8 h-8 rounded-full border-2 ${walletForm.color === color ? 'border-primary' : 'border-border'}`}
+                        className={`w-8 h-8 rounded-full border-2 ${
+                          walletForm.color === color ? 'border-primary' : 'border-border'
+                        }`}
                         style={{ backgroundColor: color }}
+                        disabled={loading}
                       />
                     ))}
                   </div>
                 </div>
               </div>
-              <div className="flex gap-3 mt-4">                <button
+              <div className="flex gap-3 mt-4">
+                <button
                   onClick={editingWallet ? handleUpdateWallet : handleAddWallet}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
                   disabled={loading}
@@ -395,7 +422,9 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
                 </button>
               </div>
             </div>
-          )}          {/* Wallet List */}
+          )}
+
+          {/* Wallet List */}
           <div className="space-y-4">
             {loading && wallets.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
@@ -404,24 +433,31 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
             ) : wallets.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No wallets created yet</p>
-                <p className="text-sm">Create your first wallet to start organizing your finances</p>
+                <p className="text-sm">Create your first wallet to start tracking</p>
               </div>
             ) : (
               wallets.map((wallet) => {
-                const TypeIcon = getTypeIcon(wallet.type);
-                const currentBalance = calculateWalletBalance(wallet.id);
+                const Icon = getTypeIcon(wallet.type);
                 return (
-                  <div key={wallet.id} className="bg-secondary/30 rounded-lg p-4 border-l-4" style={{ borderLeftColor: wallet.color }}>
+                  <div 
+                    key={wallet.id} 
+                    className={`bg-secondary/30 rounded-lg p-4 border-2 ${
+                      wallet.isDefault ? 'border-primary' : 'border-transparent'
+                    }`}
+                  >
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg" style={{ backgroundColor: wallet.color + '20' }}>
-                          <TypeIcon className="h-5 w-5" style={{ color: wallet.color }} />
+                        <div 
+                          className="p-2 rounded-lg text-white"
+                          style={{ backgroundColor: wallet.color }}
+                        >
+                          <Icon className="h-5 w-5" />
                         </div>
                         <div>
                           <h4 className="font-medium flex items-center gap-2">
                             {wallet.name}
                             {wallet.isDefault && (
-                              <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                              <span className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded-md">
                                 Default
                               </span>
                             )}
@@ -431,13 +467,15 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-1">                        {!wallet.isDefault && (
+                      <div className="flex gap-1">
+                        {!wallet.isDefault && (
                           <button
                             onClick={() => handleSetDefault(wallet.id)}
-                            className="text-xs bg-secondary hover:bg-secondary/80 px-2 py-1 rounded transition-colors"
+                            className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 rounded-lg transition-colors"
                             disabled={loading}
+                            title="Set as default"
                           >
-                            Set Default
+                            <CheckIcon className="h-4 w-4" />
                           </button>
                         )}
                         <button
@@ -447,40 +485,25 @@ const WalletManager = ({ isOpen, onClose, currency, transactions = [], onWalletC
                         >
                           <PencilIcon className="h-4 w-4" />
                         </button>
-                        {wallet.id !== 'default' && !wallet.isDefault && (
-                          <button
-                            onClick={() => handleDeleteWallet(wallet.id)}
-                            className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 rounded-lg transition-colors"
-                            disabled={loading}
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDeleteWallet(wallet.id)}
+                          className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 rounded-lg transition-colors"
+                          disabled={loading || wallet.isDefault}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                     
                     <div className="text-right">
-                      <p className="text-2xl font-bold" style={{ color: wallet.color }}>
-                        {formatCurrency(currentBalance, currency)}
+                      <p className="text-lg font-semibold">
+                        {formatCurrency(wallet.balance || 0, currency)}
                       </p>
                     </div>
                   </div>
                 );
               })
             )}
-          </div>
-
-          {/* Summary */}
-          <div className="mt-6 p-4 bg-primary/10 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="font-medium">Total Balance</span>
-              <span className="text-xl font-bold">
-                {formatCurrency(
-                  wallets.reduce((sum, wallet) => sum + calculateWalletBalance(wallet.id), 0),
-                  currency
-                )}
-              </span>
-            </div>
           </div>
         </div>
       </div>

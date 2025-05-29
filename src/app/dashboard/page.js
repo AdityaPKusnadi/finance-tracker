@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getUserBalance, addTransaction, updateTransaction, deleteTransaction, updateUserCurrency, getUserCurrency } from '../firebase';
+import { getUserBalance, addTransaction, updateTransaction, deleteTransaction, updateUserCurrency, getUserCurrency, getUserWallets, getUserSettings, updateUserSettings } from '../firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, onSnapshot, orderBy, addDoc, deleteDoc, doc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -18,6 +18,7 @@ import TransactionsPage from '@/components/TransactionsPage';
 import AccountPage from '@/components/AccountPage';
 import BudgetManager from '@/components/BudgetManager';
 import WalletManager from '@/components/WalletManager';
+import CategoryManager from '@/components/CategoryManager';
 import TravelMode from '@/components/TravelMode';
 import EnhancedHeader from '@/components/EnhancedHeader';
 import Calculator from '@/components/Calculator';
@@ -39,12 +40,9 @@ export default function Dashboard() {
   const [description, setDescription] = useState('');
   const [userId, setUserId] = useState(null);
   const [transactions, setTransactions] = useState([]);
-  const [filteredTransactions, setFilteredTransactions] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [filteredTransactions, setFilteredTransactions] = useState([]);  const [categories, setCategories] = useState([]);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [editCategoryId, setEditCategoryId] = useState(null);
-  const [editedCategoryName, setEditedCategoryName] = useState('');  const [editTransactionId, setEditTransactionId] = useState(null);
+  const [editTransactionId, setEditTransactionId] = useState(null);
   const [currency, setCurrency] = useState('USD');
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -52,10 +50,9 @@ export default function Dashboard() {
   // New state for enhanced features
   const [wallets, setWallets] = useState([]);
   const [activeWallet, setActiveWallet] = useState(null);
-  const [isTravelMode, setIsTravelMode] = useState(false);
-  const [isWalletManagerOpen, setIsWalletManagerOpen] = useState(false);
+  const [isTravelMode, setIsTravelMode] = useState(false);  const [isWalletManagerOpen, setIsWalletManagerOpen] = useState(false);
   const [isTravelModeOpen, setIsTravelModeOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState({
     subcategories: [],
@@ -71,8 +68,7 @@ export default function Dashboard() {
     setIsHydrated(true);
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+  useEffect(() => {    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUserId(user.uid);
         const userBalance = await getUserBalance(user.uid);
@@ -80,6 +76,20 @@ export default function Dashboard() {
 
         const userCurrency = await getUserCurrency(user.uid);
         setCurrency(userCurrency);
+
+        // Load wallets from Firebase
+        try {
+          const userWallets = await getUserWallets(user.uid);
+          if (userWallets.length === 0) {
+            setWallets([]);
+            setActiveWallet(null);
+          } else {
+            setWallets(userWallets);
+            setActiveWallet(userWallets.find(w => w.isDefault) || userWallets[0]);
+          }
+        } catch (error) {
+          console.error('Failed to load wallets:', error);
+        }
 
         const transactionsQuery = query(
           collection(db, 'users', user.uid, 'transactions'),
@@ -147,6 +157,35 @@ export default function Dashboard() {
   const handleDateRangeChange = (start, end) => {
     setStartDate(start);
     setEndDate(end);
+  };
+
+  // Helper function to get category icon from CategoryManager
+  const getCategoryIcon = (categoryName) => {
+    const category = categories.find(cat => cat.name === categoryName);
+    if (category && category.icon) {
+      const categoryIcons = {
+        'tag': '🏷️',
+        'food': '🍔',
+        'transport': '🚗',
+        'shopping': '🛒',
+        'entertainment': '🎬',
+        'health': '⚕️',
+        'education': '📚',
+        'utilities': '💡',
+        'rent': '🏠',
+        'salary': '💰',
+        'investment': '📈',
+        'gift': '🎁'
+      };
+      return categoryIcons[category.icon] || '🏷️';
+    }
+    return '🏷️';
+  };
+
+  // Helper function to get category color
+  const getCategoryColor = (categoryName) => {
+    const category = categories.find(cat => cat.name === categoryName);
+    return category?.color || '#3B82F6';
   };
 
   const handleCurrencyChange = async (newCurrency) => {
@@ -253,8 +292,7 @@ export default function Dashboard() {
         confirmButtonColor: '#3B82F6'
       });
     }
-  };
-  const closeModal = () => {
+  };  const closeModal = () => {
     setIsModalOpen(false);
     setAmount('');
     setCategory('');
@@ -264,22 +302,6 @@ export default function Dashboard() {
     setShowCalculator(false);
     setTransactionDetails(null);
   };
-
-  const handleAddCategory = async () => {
-    if (!editedCategoryName || !userId) return;
-  
-    try {
-      await addDoc(collection(db, 'users', userId, 'categories'), {
-        name: editedCategoryName,
-        type: transactionType,
-      });
-      setEditedCategoryName('');
-      setIsCategoryModalOpen(false);
-    } catch (error) {
-      console.error('Failed to add category:', error);
-    }
-  };
-
   const handleAddCategoryFromSelector = async (newCategory) => {
     if (!userId) return;
 
@@ -291,31 +313,6 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Failed to add category:', error);
       notify('Failed to add category', 'error');
-    }
-  };
-
-  const handleDeleteCategory = async (categoryId) => {
-    try {
-      await deleteDoc(doc(db, 'users', userId, 'categories', categoryId));
-    } catch (error) {
-      console.error('Failed to delete category:', error);
-    }
-  };
-
-  const handleEditCategory = (categoryId, currentName) => {
-    setEditCategoryId(categoryId);
-    setEditedCategoryName(currentName);
-  };
-
-  const handleUpdateCategory = async (categoryId) => {
-    try {
-      await updateDoc(doc(db, 'users', userId, 'categories', categoryId), {
-        name: editedCategoryName,
-      });
-      setEditCategoryId(null);
-      setEditedCategoryName('');
-    } catch (error) {
-      console.error('Failed to update category:', error);
     }
   };
   const handleLogout = async () => {
@@ -343,37 +340,21 @@ export default function Dashboard() {
   const handleOpenSettings = () => {
     setIsSettingsOpen(true);
   };
-
   const handleOpenWalletManager = () => {
     setIsWalletManagerOpen(true);
   };
 
-  // Initialize wallets on component mount
-  useEffect(() => {
-    const savedWallets = localStorage.getItem('wallets');
-    if (savedWallets) {
-      const walletsData = JSON.parse(savedWallets);
-      setWallets(walletsData);
-      setActiveWallet(walletsData.find(w => w.isDefault) || walletsData[0]);
-    } else {
-      const defaultWallet = {
-        id: 'default',
-        name: 'Main Wallet',
-        type: 'cash',
-        balance: 0,
-        currency: currency,
-        color: '#3B82F6',
-        isDefault: true
-      };
-      setWallets([defaultWallet]);
-      setActiveWallet(defaultWallet);
-    }
-  }, [currency]);
+  const handleOpenCategoryManager = () => {
+    setIsCategoryManagerOpen(true);
+  };
+  const handleCategoryUpdate = async () => {
+    // This will trigger a re-fetch of categories through the existing listener
+    // The categories state will automatically update via the onSnapshot listener
+  };
 
   return (
     <div className="relative flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300 pb-20">
-      {/* Enhanced Header */}
-      <EnhancedHeader
+      {/* Enhanced Header */}      <EnhancedHeader
         activeWallet={activeWallet}
         wallets={wallets}
         onWalletChange={handleWalletChange}
@@ -381,6 +362,7 @@ export default function Dashboard() {
         onToggleTravelMode={handleToggleTravelMode}
         onOpenSettings={handleOpenSettings}
         onOpenWalletManager={handleOpenWalletManager}
+        onOpenCategoryManager={handleOpenCategoryManager}
       />
 
       {/* Main Content based on active tab */}
@@ -453,27 +435,49 @@ export default function Dashboard() {
                   <h3 className="text-xl font-semibold">Recent Transactions</h3>
                   <DateRangeFilter onFilterChange={handleDateRangeChange} />
                 </div>
-                
-                <div className="space-y-3">
+                  <div className="space-y-3">
                   {filteredTransactions.slice(0, 5).map((transaction) => (
                     <div key={transaction.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${transaction.type === 'incoming' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-                          {transaction.type === 'incoming' ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
-                              <path d="m6 9 6-6 6 6"></path>
-                              <path d="M12 3v18"></path>
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600">
-                              <path d="m6 15 6 6 6-6"></path>
-                              <path d="M12 3v18"></path>
-                            </svg>
+                        <div className="flex items-center gap-2">
+                          {/* Transaction type icon */}
+                          <div className={`p-2 rounded-full ${transaction.type === 'incoming' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                            {transaction.type === 'incoming' ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
+                                <path d="m6 9 6-6 6 6"></path>
+                                <path d="M12 3v18"></path>
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600">
+                                <path d="m6 15 6 6 6-6"></path>
+                                <path d="M12 3v18"></path>
+                              </svg>
+                            )}
+                          </div>
+                          {/* Category icon */}
+                          {transaction.category && (
+                            <div 
+                              className="p-1.5 rounded-full text-sm"
+                              style={{ backgroundColor: `${getCategoryColor(transaction.category)}20` }}
+                              title={transaction.category}
+                            >
+                              {getCategoryIcon(transaction.category)}
+                            </div>
                           )}
                         </div>
                         <div>
                           <p className="font-medium text-sm">{transaction.description || 'No description'}</p>
-                          <p className="text-xs text-muted-foreground">{transaction.category}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground">{transaction.category}</p>
+                            {transaction.category && (
+                              <span 
+                                className="text-xs px-2 py-0.5 rounded-full text-white font-medium"
+                                style={{ backgroundColor: getCategoryColor(transaction.category) }}
+                              >
+                                {getCategoryIcon(transaction.category)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
@@ -517,15 +521,14 @@ export default function Dashboard() {
             endDate={endDate}
             onDateFilterChange={handleDateRangeChange}
           />
-        )}
-
-        {activeTab === 'budget' && (
+        )}        {activeTab === 'budget' && (
           <div className="p-4">
             <BudgetManager
               isOpen={true}
               onClose={() => setActiveTab('home')}
               currency={currency}
               transactions={filteredTransactions}
+              categories={categories}
             />
           </div>
         )}
@@ -542,9 +545,7 @@ export default function Dashboard() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onAddTransaction={() => setIsModalOpen(true)}
-      />
-
-      {/* Wallet Manager Modal */}
+      />      {/* Wallet Manager Modal */}
       {isWalletManagerOpen && (
         <WalletManager
           isOpen={isWalletManagerOpen}
@@ -552,6 +553,16 @@ export default function Dashboard() {
           currency={currency}
           transactions={filteredTransactions}
           onWalletChange={handleWalletChange}
+        />
+      )}
+
+      {/* Category Manager Modal */}
+      {isCategoryManagerOpen && (
+        <CategoryManager
+          isOpen={isCategoryManagerOpen}
+          onClose={() => setIsCategoryManagerOpen(false)}
+          categories={categories}
+          onCategoryUpdate={handleCategoryUpdate}
         />
       )}
 
@@ -568,15 +579,10 @@ export default function Dashboard() {
             setCategory('Travel');
             setTransactionType('outgoing');
             setIsModalOpen(true);
-          }}
-        />
-      )}      {/* Modal Backdrop for Category Modal */}
-      {isCategoryModalOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-          onClick={() => setIsCategoryModalOpen(false)}
-        ></div>
-      )}{/* Enhanced Transaction Modal */}
+          }}        />
+      )}
+
+      {/* Enhanced Transaction Modal */}
       {isModalOpen && (
         <EnhancedTransactionModal
           isOpen={isModalOpen}
@@ -592,7 +598,8 @@ export default function Dashboard() {
               totalAmount: 0,
               notes: ''
             });
-          }}          onSubmit={handleEnhancedTransactionSubmit}
+          }}
+          onSubmit={handleEnhancedTransactionSubmit}
           currency={currency}
           categories={categories}
           onAddCategory={handleAddCategoryFromSelector}
@@ -606,99 +613,6 @@ export default function Dashboard() {
           } : null}
           isEditing={!!editTransactionId}
         />
-      )}
-
-      {/* Category Modal */}
-      {isCategoryModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" onClick={e => e.stopPropagation()}>
-          <div className="bg-card border border-border rounded-xl shadow-lg w-full max-w-md p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-5">
-              {transactionType === 'incoming' ? 'Income' : 'Expense'} Categories
-            </h3>
-            
-            {/* Add New Category */}
-            <div className="flex items-center space-x-2 mb-6">
-              <input
-                type="text"
-                value={editedCategoryName}
-                onChange={(e) => setEditedCategoryName(e.target.value)}
-                className="flex-1 p-2.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="New category name"
-              />
-              <button
-                onClick={handleAddCategory}
-                disabled={!editedCategoryName}
-                className="p-2.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors disabled:opacity-50"
-              >
-                Add
-              </button>
-            </div>
-            
-            {/* Categories List */}
-            <div className="max-h-[300px] overflow-y-auto pr-2 -mr-2">
-              <ul className="space-y-2">
-                {categories
-                  .filter((cat) => cat.type === transactionType)
-                  .map((cat) => (
-                    <li key={cat.id} className="flex items-center justify-between p-3 rounded-md hover:bg-secondary/50 group">
-                      {editCategoryId === cat.id ? (
-                        <input
-                          type="text"
-                          value={editedCategoryName}
-                          onChange={(e) => setEditedCategoryName(e.target.value)}
-                          onBlur={() => handleUpdateCategory(cat.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdateCategory(cat.id);
-                          }}
-                          className="flex-1 p-1.5 rounded border border-primary bg-background text-foreground focus:outline-none"
-                          autoFocus
-                        />
-                      ) : (
-                        <span 
-                          className="flex-1 cursor-pointer" 
-                          onClick={() => handleEditCategory(cat.id, cat.name)}
-                        >
-                          {cat.name}
-                        </span>
-                      )}
-                      <button
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="p-1.5 rounded-full opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-100/30 dark:hover:bg-red-900/30 transition-all"
-                        aria-label="Delete category"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18"></path>
-                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </li>
-                  ))}
-              </ul>
-              
-              {categories.filter((cat) => cat.type === transactionType).length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No categories yet</p>
-                  <p className="text-sm">Add a category to get started</p>
-                </div>
-              )}
-            </div>
-            
-            {/* Actions */}
-            <div className="mt-6">
-              <button
-                onClick={() => {
-                  setIsCategoryModalOpen(false);
-                  setEditCategoryId(null);
-                  setEditedCategoryName('');
-                }}
-                className="w-full py-2.5 rounded-md bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

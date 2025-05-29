@@ -21,6 +21,35 @@ const TransactionsPage = ({
   const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Helper function to get category icon from CategoryManager
+  const getCategoryIcon = (categoryName) => {
+    const category = categories.find(cat => cat.name === categoryName);
+    if (category && category.icon) {
+      const categoryIcons = {
+        'tag': '🏷️',
+        'food': '🍔',
+        'transport': '🚗',
+        'shopping': '🛒',
+        'entertainment': '🎬',
+        'health': '⚕️',
+        'education': '📚',
+        'utilities': '💡',
+        'rent': '🏠',
+        'salary': '💰',
+        'investment': '📈',
+        'gift': '🎁'
+      };
+      return categoryIcons[category.icon] || '🏷️';
+    }
+    return '🏷️';
+  };
+
+  // Helper function to get category color
+  const getCategoryColor = (categoryName) => {
+    const category = categories.find(cat => cat.name === categoryName);
+    return category?.color || '#3B82F6';
+  };
+
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
 
@@ -207,13 +236,25 @@ const TransactionsPage = ({
               <p>No transactions found</p>
               <p className="text-sm">Try adjusting your filters</p>
             </div>
-          ) : (
-            filteredTransactions.map((transaction) => (
+          ) : (            filteredTransactions.map((transaction) => (
               <div key={transaction.id} className="p-4 hover:bg-secondary/20 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="p-2 bg-secondary/50 rounded-full">
-                      {getTransactionIcon(transaction.type)}
+                    <div className="flex items-center gap-2">
+                      {/* Transaction type icon */}
+                      <div className="p-2 bg-secondary/50 rounded-full">
+                        {getTransactionIcon(transaction.type)}
+                      </div>
+                      {/* Category icon */}
+                      {transaction.category && (
+                        <div 
+                          className="p-2 rounded-full text-lg"
+                          style={{ backgroundColor: `${getCategoryColor(transaction.category)}20` }}
+                          title={transaction.category}
+                        >
+                          {getCategoryIcon(transaction.category)}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -221,7 +262,10 @@ const TransactionsPage = ({
                           {transaction.description || 'No description'}
                         </p>
                         {transaction.category && (
-                          <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                          <span 
+                            className="text-xs px-2 py-1 rounded-full text-white font-medium"
+                            style={{ backgroundColor: getCategoryColor(transaction.category) }}
+                          >
                             {transaction.category}
                           </span>
                         )}

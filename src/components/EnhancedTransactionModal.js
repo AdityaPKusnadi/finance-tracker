@@ -53,8 +53,35 @@ const EnhancedTransactionModal = ({
     { label: '50K', value: 50000 },
     { label: '100K', value: 100000 },
     { label: '250K', value: 250000 },
-    { label: '500K', value: 500000 },
-  ];
+    { label: '500K', value: 500000 },  ];
+
+  // Helper function to get category icon
+  const getCategoryIcon = (iconId) => {
+    const categoryIcons = {
+      'tag': '🏷️',
+      'food': '🍔',
+      'transport': '🚗',
+      'shopping': '🛒',
+      'entertainment': '🎬',
+      'health': '⚕️',
+      'education': '📚',
+      'utilities': '💡',
+      'rent': '🏠',
+      'salary': '💰',
+      'investment': '📈',
+      'gift': '🎁'
+    };
+    return categoryIcons[iconId] || '🏷️';
+  };
+
+  // Helper function to get selected category details
+  const getSelectedCategoryDetails = () => {
+    const category = categories.find(cat => cat.name === formData.category);
+    return category ? {
+      icon: getCategoryIcon(category.icon),
+      color: category.color || '#3B82F6'
+    } : null;
+  };
 
   // Initialize form data when editing
   useEffect(() => {

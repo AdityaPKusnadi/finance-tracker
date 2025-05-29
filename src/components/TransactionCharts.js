@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, Title } from 'chart.js';
 import { format } from 'date-fns';
-import { formatCurrency } from '@/utils/currency';
+import { formatCurrency, formatCompactNumber, formatPercentage } from '@/utils/currency';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, Title);
 
@@ -143,19 +143,21 @@ const TransactionCharts = ({ transactions, currency, startDate, endDate }) => {
     return { bg, border };
   }
   
-  // Chart options
+  // Chart options with improved center text positioning
   const options = {
     plugins: {
       legend: {
-        position: 'right',
+        position: 'bottom',
         align: 'center',
         labels: {
-          boxWidth: 12,
-          padding: 15,
+          boxWidth: 8,
+          padding: 6,
           font: {
-            size: 11
+            size: 9
           },
-          color: 'rgb(var(--foreground-rgb))'
+          color: 'rgb(var(--foreground-rgb))',
+          usePointStyle: true,
+          pointStyle: 'circle'
         }
       },
       tooltip: {
@@ -243,18 +245,22 @@ const TransactionCharts = ({ transactions, currency, startDate, endDate }) => {
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-6`}>
           {(activeChart === 'income' || activeChart === 'both') && (
             <div className="bg-green-50/30 dark:bg-green-900/10 rounded-lg p-4">
-              <h4 className="text-center font-medium text-sm text-green-700 dark:text-green-300 mb-2">Income Breakdown</h4>
-              <div className="h-[200px] md:h-[220px] relative">
+              <h4 className="text-center font-medium text-sm text-green-700 dark:text-green-300 mb-3">Income Breakdown</h4>
+              <div className="h-[220px] md:h-[240px] relative">
                 {income.labels.length > 0 ? (
                   <Doughnut data={income} options={options} />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                     No income data
                   </div>
-                )}                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                  <div className="text-xs text-muted-foreground">Total</div>
-                  <div className="font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(totalIncome, currency)}
+                )}
+                {/* Centered total display */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-[10px] text-muted-foreground font-medium mb-0.5">Total</div>
+                    <div className="font-bold text-xs text-green-600 dark:text-green-400 leading-tight">
+                      {formatCurrency(totalIncome, currency)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -263,18 +269,22 @@ const TransactionCharts = ({ transactions, currency, startDate, endDate }) => {
           
           {(activeChart === 'expense' || activeChart === 'both') && (
             <div className="bg-red-50/30 dark:bg-red-900/10 rounded-lg p-4">
-              <h4 className="text-center font-medium text-sm text-red-700 dark:text-red-300 mb-2">Expense Breakdown</h4>
-              <div className="h-[200px] md:h-[220px] relative">
+              <h4 className="text-center font-medium text-sm text-red-700 dark:text-red-300 mb-3">Expense Breakdown</h4>
+              <div className="h-[220px] md:h-[240px] relative">
                 {expense.labels.length > 0 ? (
                   <Doughnut data={expense} options={options} />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                     No expense data
                   </div>
-                )}                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                  <div className="text-xs text-muted-foreground">Total</div>
-                  <div className="font-bold text-red-600 dark:text-red-400">
-                    {formatCurrency(totalExpense, currency)}
+                )}
+                {/* Centered total display */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-[10px] text-muted-foreground font-medium mb-0.5">Total</div>
+                    <div className="font-bold text-xs text-red-600 dark:text-red-400 leading-tight">
+                      {formatCurrency(totalExpense, currency)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -282,7 +292,7 @@ const TransactionCharts = ({ transactions, currency, startDate, endDate }) => {
           )}
         </div>
         
-        {/* Stats summary */}
+        {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-4 mt-6">
           <div className="bg-secondary/30 p-4 rounded-lg text-center">
             <p className="text-sm text-muted-foreground mb-1">Savings Rate</p>

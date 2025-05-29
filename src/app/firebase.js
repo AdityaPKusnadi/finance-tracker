@@ -136,8 +136,21 @@ export const loginWithEmailAndPassword = (email, password) => {
   return signInWithEmailAndPassword(auth, email, password);
 };
 
-export const signInWithGoogle = () => {
-  signInWithPopup(auth, googleProvider);
+export const signInWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (error) {
+    console.error('Error signing in with Google:', error);
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error('Google sign-in was cancelled. Please try again.');
+    }
+    throw error;
+  }
 };
 
 export { auth, db };

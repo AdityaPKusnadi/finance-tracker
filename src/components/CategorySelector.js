@@ -30,9 +30,11 @@ import {
   CheckBadgeIcon
 } from '@heroicons/react/24/solid';
 
-const CategorySelector = ({ categories, value, onChange, transactionType }) => {
+const CategorySelector = ({ categories, value, onChange, transactionType, onAddCategory }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [showAddNew, setShowAddNew] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const dropdownRef = useRef(null);
   
   // Filter categories by type and search term

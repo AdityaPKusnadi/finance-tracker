@@ -116,8 +116,7 @@ const EnhancedTransactionModal = ({
           notes: ''
         }
       });
-    }
-  }, [isEditing, editTransaction, isOpen, activeWallet, wallets]);
+    }  }, [isEditing, editTransaction, isOpen, activeWallet, wallets]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -322,18 +321,27 @@ const EnhancedTransactionModal = ({
                     onChange={(e) => setFormData(prev => ({ ...prev, walletId: e.target.value || null }))}
                     className="w-full p-4 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
                     required
-                  >
-                    <option value="">Select a wallet...</option>
-                    {wallets.map((wallet) => (
-                      <option key={wallet.id} value={wallet.id}>
-                        {wallet.name} {wallet.isDefault ? '(Default)' : ''} - {formatCurrency(wallet.balance || 0, currency)}
-                      </option>
-                    ))}
+                  >                    <option value="">Select a wallet...</option>
+                    {wallets.length === 0 ? (
+                      <option disabled>No wallets available - Create one in Wallet Manager</option>
+                    ) : (
+                      wallets.map((wallet) => (
+                        <option key={wallet.id} value={wallet.id}>
+                          {wallet.name} {wallet.isDefault ? '(Default)' : ''} - {formatCurrency(wallet.balance || 0, currency)}
+                        </option>
+                      ))
+                    )}
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     <ChevronDownIcon className="h-5 w-5 text-muted-foreground" />
+                  </div>                </div>
+                {wallets.length === 0 && (
+                  <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                      No wallets available. Please create a wallet first using the Wallet Manager.
+                    </p>
                   </div>
-                </div>
+                )}
                 {formData.walletId && (
                   <div className="mt-2 p-3 bg-secondary/30 rounded-lg">
                     {(() => {

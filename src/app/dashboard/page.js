@@ -75,21 +75,26 @@ export default function Dashboard() {
         setBalance(userBalance);
 
         const userCurrency = await getUserCurrency(user.uid);
-        setCurrency(userCurrency);
-
-        // Load wallets from Firebase
-        try {
-          const userWallets = await getUserWallets(user.uid);
-          if (userWallets.length === 0) {
-            setWallets([]);
-            setActiveWallet(null);
+        setCurrency(userCurrency);        // Load wallets from Firebase with real-time listener
+        const walletsQuery = query(
+          collection(db, 'users', user.uid, 'wallets'),
+          orderBy('createdAt', 'asc')
+        );
+        const unsubscribeWallets = onSnapshot(walletsQuery, (snapshot) => {
+          const walletsList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setWallets(walletsList);
+          
+          // Set active wallet to default or first wallet
+          if (walletsList.length > 0) {
+            const defaultWallet = walletsList.find(w => w.isDefault);
+            setActiveWallet(defaultWallet || walletsList[0]);
           } else {
-            setWallets(userWallets);
-            setActiveWallet(userWallets.find(w => w.isDefault) || userWallets[0]);
+            setActiveWallet(null);
           }
-        } catch (error) {
-          console.error('Failed to load wallets:', error);
-        }
+        });
 
         const transactionsQuery = query(
           collection(db, 'users', user.uid, 'transactions'),
@@ -113,11 +118,10 @@ export default function Dashboard() {
             ...doc.data(),
           }));
           setCategories(categoriesList);
-        });
-
-        return () => {
+        });        return () => {
           unsubscribeTransactions();
           unsubscribeCategories();
+          unsubscribeWallets();
         };
       } else {
         router.push('/login');
@@ -243,12 +247,28 @@ export default function Dashboard() {
           enhancedDescription += `\n\nNotes: ${transactionData.details.notes}`;
         }
       }
-      
-      if (editTransactionId) {
-        await updateTransaction(userId, editTransactionId, transactionData.amount, transactionData.type, transactionData.category, enhancedDescription);
+        if (editTransactionId) {
+        await updateTransaction(
+          userId, 
+          editTransactionId, 
+          transactionData.amount, 
+          transactionData.type, 
+          transactionData.category, 
+          enhancedDescription,
+          transactionData.walletId,
+          transactionData.details
+        );
         setEditTransactionId(null);
       } else {
-        const updatedBalance = await addTransaction(userId, transactionData.amount, transactionData.type, transactionData.category, enhancedDescription);
+        const updatedBalance = await addTransaction(
+          userId, 
+          transactionData.amount, 
+          transactionData.type, 
+          transactionData.category, 
+          enhancedDescription,
+          transactionData.walletId,
+          transactionData.details
+        );
         setBalance(updatedBalance);
       }
       

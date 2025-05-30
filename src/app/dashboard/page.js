@@ -451,8 +451,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            
-            {/* Summary Cards */}
+              {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 w-full">
               <SummaryCard 
                 title="Income" 
@@ -460,8 +459,7 @@ export default function Dashboard() {
                   .filter(t => t.type === 'incoming')
                   .reduce((acc, t) => acc + t.amount, 0)}
                 currency={currency}
-                bgClass="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
-                textClass="text-white"
+                type="income"
                 icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 7-10 10"/><path d="M7 7h10v10"/></svg>}
               />
               <SummaryCard 
@@ -470,8 +468,7 @@ export default function Dashboard() {
                   .filter(t => t.type === 'outgoing')
                   .reduce((acc, t) => acc + t.amount, 0)}
                 currency={currency}
-                bgClass="bg-gradient-to-r from-red-500 to-rose-600 text-white"
-                textClass="text-white"
+                type="expense"
                 icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 17 10-10"/><path d="M17 17V7H7"/></svg>}
               />
               <SummaryCard 
@@ -479,8 +476,7 @@ export default function Dashboard() {
                 amount={filteredTransactions
                   .reduce((acc, t) => t.type === 'incoming' ? acc + t.amount : acc - t.amount, 0)}
                 currency={currency}
-                bgClass="bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-                textClass="text-white"
+                type="balance"
                 icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>}
               />
             </div>
